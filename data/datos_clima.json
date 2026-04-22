@@ -1,0 +1,1270 @@
+[
+    {
+        "fecha": "2025-12-01",
+        "distrito": "Arganzuela",
+        "temp": -2.9,
+        "humedad": 75.0,
+        "viento": 18.1,
+        "lluvia": 2.2,
+        "alertas": [
+            "HELADA: Alerta Roja. Frio extremo (-2.9C). Riesgo infraestructuras."
+        ],
+        "registrado_por": "100375",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-02",
+        "distrito": "Barajas",
+        "temp": -4.7,
+        "humedad": 64.0,
+        "viento": 5.8,
+        "lluvia": 1.6,
+        "alertas": [
+            "HELADA: Alerta Roja. Frio extremo (-4.7C). Riesgo infraestructuras."
+        ],
+        "registrado_por": "850369",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-03",
+        "distrito": "Carabanchel",
+        "temp": -2.7,
+        "humedad": 72.0,
+        "viento": 7.4,
+        "lluvia": 0.8,
+        "alertas": [
+            "HELADA: Alerta Roja. Frio extremo (-2.7C). Riesgo infraestructuras."
+        ],
+        "registrado_por": "036673",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-04",
+        "distrito": "Centro",
+        "temp": -3.7,
+        "humedad": 64.0,
+        "viento": 7.1,
+        "lluvia": 2.8,
+        "alertas": [
+            "HELADA: Alerta Roja. Frio extremo (-3.7C). Riesgo infraestructuras."
+        ],
+        "registrado_por": "623035",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-05",
+        "distrito": "Chamartín",
+        "temp": -3.3,
+        "humedad": 67.0,
+        "viento": 17.4,
+        "lluvia": 4.5,
+        "alertas": [
+            "HELADA: Alerta Roja. Frio extremo (-3.3C). Riesgo infraestructuras."
+        ],
+        "registrado_por": "182736",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-06",
+        "distrito": "Chamberí",
+        "temp": 1.8,
+        "humedad": 73.0,
+        "viento": 15.9,
+        "lluvia": 5.1,
+        "alertas": [
+            "AVISO: Riesgo de helada preventiva (1.8C)."
+        ],
+        "registrado_por": "273645",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-07",
+        "distrito": "Ciudad Lineal",
+        "temp": 0.6,
+        "humedad": 76.0,
+        "viento": 14.5,
+        "lluvia": 8.5,
+        "alertas": [
+            "AVISO: Riesgo de helada preventiva (0.6C)."
+        ],
+        "registrado_por": "118273",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-08",
+        "distrito": "Fuencarral-El Pardo",
+        "temp": 1.1,
+        "humedad": 80.0,
+        "viento": 18.2,
+        "lluvia": 2.8,
+        "alertas": [
+            "AVISO: Riesgo de helada preventiva (1.1C)."
+        ],
+        "registrado_por": "036939",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-09",
+        "distrito": "Hortaleza",
+        "temp": 1.7,
+        "humedad": 86.0,
+        "viento": 10.6,
+        "lluvia": 5.8,
+        "alertas": [
+            "AVISO: Riesgo de helada preventiva (1.7C)."
+        ],
+        "registrado_por": "010203",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-10",
+        "distrito": "Latina",
+        "temp": 1.4,
+        "humedad": 71.0,
+        "viento": 12.0,
+        "lluvia": 8.0,
+        "alertas": [
+            "AVISO: Riesgo de helada preventiva (1.4C)."
+        ],
+        "registrado_por": "142536",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-11",
+        "distrito": "Moncloa-Aravaca",
+        "temp": 7.1,
+        "humedad": 93.0,
+        "viento": 15.5,
+        "lluvia": 44.7,
+        "alertas": [
+            "AVISO: Alerta Naranja. Lluvia intensa (44.7 mm)."
+        ],
+        "registrado_por": "987654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-12",
+        "distrito": "Moratalaz",
+        "temp": 5.0,
+        "humedad": 86.0,
+        "viento": 10.1,
+        "lluvia": 32.8,
+        "alertas": [
+            "AVISO: Alerta Naranja. Lluvia intensa (32.8 mm)."
+        ],
+        "registrado_por": "147258",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-13",
+        "distrito": "Puente de Vallecas",
+        "temp": 10.9,
+        "humedad": 81.0,
+        "viento": 21.0,
+        "lluvia": 33.4,
+        "alertas": [
+            "AVISO: Alerta Naranja. Lluvia intensa (33.4 mm)."
+        ],
+        "registrado_por": "654321",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-14",
+        "distrito": "Retiro",
+        "temp": 10.9,
+        "humedad": 80.0,
+        "viento": 20.3,
+        "lluvia": 40.6,
+        "alertas": [
+            "AVISO: Alerta Naranja. Lluvia intensa (40.6 mm)."
+        ],
+        "registrado_por": "635241",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-15",
+        "distrito": "Salamanca",
+        "temp": 7.0,
+        "humedad": 81.0,
+        "viento": 22.8,
+        "lluvia": 30.7,
+        "alertas": [
+            "AVISO: Alerta Naranja. Lluvia intensa (30.7 mm)."
+        ],
+        "registrado_por": "321654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-16",
+        "distrito": "San Blas-Canillejas",
+        "temp": 9.0,
+        "humedad": 96.0,
+        "viento": 29.0,
+        "lluvia": 74.5,
+        "alertas": [
+            "LLUVIA: Alerta Roja. Precipitacion torrencial (74.5 mm)."
+        ],
+        "registrado_por": "789456",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-17",
+        "distrito": "Tetuán",
+        "temp": 12.5,
+        "humedad": 94.0,
+        "viento": 17.8,
+        "lluvia": 73.5,
+        "alertas": [
+            "LLUVIA: Alerta Roja. Precipitacion torrencial (73.5 mm)."
+        ],
+        "registrado_por": "849562",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-18",
+        "distrito": "Usera",
+        "temp": 6.0,
+        "humedad": 88.0,
+        "viento": 16.5,
+        "lluvia": 77.6,
+        "alertas": [
+            "LLUVIA: Alerta Roja. Precipitacion torrencial (77.6 mm)."
+        ],
+        "registrado_por": "963852",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-19",
+        "distrito": "Vicálvaro",
+        "temp": 9.3,
+        "humedad": 84.0,
+        "viento": 17.4,
+        "lluvia": 72.7,
+        "alertas": [
+            "LLUVIA: Alerta Roja. Precipitacion torrencial (72.7 mm)."
+        ],
+        "registrado_por": "258741",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-20",
+        "distrito": "Villa de Vallecas",
+        "temp": 9.7,
+        "humedad": 83.0,
+        "viento": 15.8,
+        "lluvia": 68.4,
+        "alertas": [
+            "LLUVIA: Alerta Roja. Precipitacion torrencial (68.4 mm)."
+        ],
+        "registrado_por": "741852",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-21",
+        "distrito": "Villaverde",
+        "temp": 8.5,
+        "humedad": 71.0,
+        "viento": 42.4,
+        "lluvia": 6.8,
+        "alertas": [
+            "VIENTO: Rachas de 42.4 km/h. Riesgo en parques."
+        ],
+        "registrado_por": "852963",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-22",
+        "distrito": "Arganzuela",
+        "temp": 12.7,
+        "humedad": 66.0,
+        "viento": 48.4,
+        "lluvia": 8.5,
+        "alertas": [
+            "VIENTO: Rachas de 48.4 km/h. Riesgo en parques."
+        ],
+        "registrado_por": "369258",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-23",
+        "distrito": "Barajas",
+        "temp": 13.3,
+        "humedad": 82.0,
+        "viento": 48.8,
+        "lluvia": 11.8,
+        "alertas": [
+            "VIENTO: Rachas de 48.8 km/h. Riesgo en parques."
+        ],
+        "registrado_por": "456789",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-24",
+        "distrito": "Carabanchel",
+        "temp": 12.4,
+        "humedad": 72.0,
+        "viento": 40.6,
+        "lluvia": 10.9,
+        "alertas": [
+            "VIENTO: Rachas de 40.6 km/h. Riesgo en parques."
+        ],
+        "registrado_por": "159753",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-25",
+        "distrito": "Centro",
+        "temp": 12.3,
+        "humedad": 75.0,
+        "viento": 46.4,
+        "lluvia": 13.8,
+        "alertas": [
+            "VIENTO: Rachas de 46.4 km/h. Riesgo en parques."
+        ],
+        "registrado_por": "101010",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-26",
+        "distrito": "Chamartín",
+        "temp": 17.0,
+        "humedad": 11.0,
+        "viento": 27.8,
+        "lluvia": 2.2,
+        "alertas": [
+            "SEQUEDAD: Humedad muy baja (11.0%). Riesgo de incendio."
+        ],
+        "registrado_por": "100375",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-27",
+        "distrito": "Chamberí",
+        "temp": 16.2,
+        "humedad": 15.0,
+        "viento": 20.3,
+        "lluvia": 0.1,
+        "alertas": [
+            "SEQUEDAD: Humedad muy baja (15.0%). Riesgo de incendio."
+        ],
+        "registrado_por": "850369",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-28",
+        "distrito": "Ciudad Lineal",
+        "temp": 16.1,
+        "humedad": 9.0,
+        "viento": 24.0,
+        "lluvia": 0.9,
+        "alertas": [
+            "SEQUEDAD: Humedad muy baja (9.0%). Riesgo de incendio."
+        ],
+        "registrado_por": "036673",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-29",
+        "distrito": "Fuencarral-El Pardo",
+        "temp": 14.2,
+        "humedad": 8.0,
+        "viento": 13.9,
+        "lluvia": 2.1,
+        "alertas": [
+            "SEQUEDAD: Humedad muy baja (8.0%). Riesgo de incendio."
+        ],
+        "registrado_por": "623035",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-30",
+        "distrito": "Hortaleza",
+        "temp": 16.3,
+        "humedad": 15.0,
+        "viento": 15.4,
+        "lluvia": 4.7,
+        "alertas": [
+            "SEQUEDAD: Humedad muy baja (15.0%). Riesgo de incendio."
+        ],
+        "registrado_por": "182736",
+        "editado": false
+    },
+    {
+        "fecha": "2025-12-31",
+        "distrito": "Latina",
+        "temp": 15.0,
+        "humedad": 10.0,
+        "viento": 28.1,
+        "lluvia": 3.3,
+        "alertas": [
+            "SEQUEDAD: Humedad muy baja (10.0%). Riesgo de incendio."
+        ],
+        "registrado_por": "273645",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Arganzuela",
+        "temp": 35.1,
+        "humedad": 45.0,
+        "viento": 7.0,
+        "lluvia": 1.7,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (35.1C)."
+        ],
+        "registrado_por": "118273",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Barajas",
+        "temp": 37.7,
+        "humedad": 43.0,
+        "viento": 6.9,
+        "lluvia": 0.1,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (37.7C)."
+        ],
+        "registrado_por": "036939",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-03",
+        "distrito": "Carabanchel",
+        "temp": 37.5,
+        "humedad": 38.0,
+        "viento": 17.1,
+        "lluvia": 4.8,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (37.5C)."
+        ],
+        "registrado_por": "010203",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-04",
+        "distrito": "Centro",
+        "temp": 35.9,
+        "humedad": 39.0,
+        "viento": 13.1,
+        "lluvia": 0.5,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (35.9C)."
+        ],
+        "registrado_por": "142536",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-05",
+        "distrito": "Chamartín",
+        "temp": 38.4,
+        "humedad": 41.0,
+        "viento": 12.6,
+        "lluvia": 1.0,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (38.4C)."
+        ],
+        "registrado_por": "987654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-06",
+        "distrito": "Chamberí",
+        "temp": 40.9,
+        "humedad": 38.0,
+        "viento": 13.4,
+        "lluvia": 1.0,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.9C)."
+        ],
+        "registrado_por": "147258",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-07",
+        "distrito": "Ciudad Lineal",
+        "temp": 43.1,
+        "humedad": 32.0,
+        "viento": 13.1,
+        "lluvia": 2.3,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (43.1C)."
+        ],
+        "registrado_por": "654321",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-08",
+        "distrito": "Fuencarral-El Pardo",
+        "temp": 40.9,
+        "humedad": 39.0,
+        "viento": 8.7,
+        "lluvia": 2.4,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.9C)."
+        ],
+        "registrado_por": "635241",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-09",
+        "distrito": "Hortaleza",
+        "temp": 41.6,
+        "humedad": 35.0,
+        "viento": 11.5,
+        "lluvia": 0.7,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (41.6C)."
+        ],
+        "registrado_por": "321654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-10",
+        "distrito": "Latina",
+        "temp": 40.6,
+        "humedad": 36.0,
+        "viento": 9.6,
+        "lluvia": 1.1,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.6C)."
+        ],
+        "registrado_por": "789456",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-11",
+        "distrito": "Moncloa-Aravaca",
+        "temp": 28.3,
+        "humedad": 49.0,
+        "viento": 6.7,
+        "lluvia": 1.8,
+        "alertas": [],
+        "registrado_por": "849562",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-12",
+        "distrito": "Moratalaz",
+        "temp": 29.1,
+        "humedad": 50.0,
+        "viento": 11.9,
+        "lluvia": 2.2,
+        "alertas": [],
+        "registrado_por": "963852",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-13",
+        "distrito": "Puente de Vallecas",
+        "temp": 26.2,
+        "humedad": 37.0,
+        "viento": 10.9,
+        "lluvia": 3.2,
+        "alertas": [],
+        "registrado_por": "258741",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-14",
+        "distrito": "Retiro",
+        "temp": 28.3,
+        "humedad": 54.0,
+        "viento": 14.6,
+        "lluvia": 3.6,
+        "alertas": [],
+        "registrado_por": "741852",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-15",
+        "distrito": "Salamanca",
+        "temp": 29.4,
+        "humedad": 38.0,
+        "viento": 14.5,
+        "lluvia": 1.6,
+        "alertas": [],
+        "registrado_por": "852963",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-16",
+        "distrito": "San Blas-Canillejas",
+        "temp": 28.3,
+        "humedad": 38.0,
+        "viento": 11.9,
+        "lluvia": 0.8,
+        "alertas": [],
+        "registrado_por": "369258",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-17",
+        "distrito": "Tetuán",
+        "temp": 28.3,
+        "humedad": 53.0,
+        "viento": 15.0,
+        "lluvia": 2.2,
+        "alertas": [],
+        "registrado_por": "456789",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-18",
+        "distrito": "Usera",
+        "temp": 28.5,
+        "humedad": 40.0,
+        "viento": 8.5,
+        "lluvia": 0.5,
+        "alertas": [],
+        "registrado_por": "159753",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-19",
+        "distrito": "Vicálvaro",
+        "temp": 26.6,
+        "humedad": 53.0,
+        "viento": 7.6,
+        "lluvia": 1.2,
+        "alertas": [],
+        "registrado_por": "101010",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-20",
+        "distrito": "Villa de Vallecas",
+        "temp": 27.6,
+        "humedad": 54.0,
+        "viento": 15.0,
+        "lluvia": 4.2,
+        "alertas": [],
+        "registrado_por": "100375",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-21",
+        "distrito": "Villaverde",
+        "temp": 27.9,
+        "humedad": 36.0,
+        "viento": 7.3,
+        "lluvia": 2.7,
+        "alertas": [],
+        "registrado_por": "850369",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-22",
+        "distrito": "Arganzuela",
+        "temp": 26.8,
+        "humedad": 54.0,
+        "viento": 10.7,
+        "lluvia": 0.6,
+        "alertas": [],
+        "registrado_por": "036673",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-23",
+        "distrito": "Barajas",
+        "temp": 28.9,
+        "humedad": 40.0,
+        "viento": 7.7,
+        "lluvia": 4.6,
+        "alertas": [],
+        "registrado_por": "623035",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-24",
+        "distrito": "Carabanchel",
+        "temp": 29.3,
+        "humedad": 46.0,
+        "viento": 7.6,
+        "lluvia": 4.5,
+        "alertas": [],
+        "registrado_por": "182736",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-25",
+        "distrito": "Centro",
+        "temp": 27.1,
+        "humedad": 54.0,
+        "viento": 14.5,
+        "lluvia": 2.8,
+        "alertas": [],
+        "registrado_por": "273645",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-26",
+        "distrito": "Chamartín",
+        "temp": 29.4,
+        "humedad": 48.0,
+        "viento": 9.2,
+        "lluvia": 3.3,
+        "alertas": [],
+        "registrado_por": "118273",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-27",
+        "distrito": "Chamberí",
+        "temp": 27.6,
+        "humedad": 54.0,
+        "viento": 12.3,
+        "lluvia": 0.0,
+        "alertas": [],
+        "registrado_por": "036939",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-28",
+        "distrito": "Ciudad Lineal",
+        "temp": 28.4,
+        "humedad": 42.0,
+        "viento": 11.0,
+        "lluvia": 4.8,
+        "alertas": [],
+        "registrado_por": "010203",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-29",
+        "distrito": "Fuencarral-El Pardo",
+        "temp": 26.7,
+        "humedad": 43.0,
+        "viento": 11.3,
+        "lluvia": 4.9,
+        "alertas": [],
+        "registrado_por": "142536",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-30",
+        "distrito": "Hortaleza",
+        "temp": 27.0,
+        "humedad": 44.0,
+        "viento": 5.6,
+        "lluvia": 4.9,
+        "alertas": [],
+        "registrado_por": "987654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-31",
+        "distrito": "Latina",
+        "temp": 29.2,
+        "humedad": 39.0,
+        "viento": 12.9,
+        "lluvia": 0.1,
+        "alertas": [],
+        "registrado_por": "147258",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Arganzuela",
+        "temp": 38.2,
+        "humedad": 31.0,
+        "viento": 11.3,
+        "lluvia": 0.5,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (38.2C)."
+        ],
+        "registrado_por": "100375",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-03",
+        "distrito": "Arganzuela",
+        "temp": 29.8,
+        "humedad": 39.0,
+        "viento": 13.9,
+        "lluvia": 3.4,
+        "alertas": [],
+        "registrado_por": "850369",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Barajas",
+        "temp": 40.4,
+        "humedad": 29.0,
+        "viento": 10.7,
+        "lluvia": 2.0,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.4C)."
+        ],
+        "registrado_por": "036673",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-03",
+        "distrito": "Barajas",
+        "temp": 28.0,
+        "humedad": 46.0,
+        "viento": 12.7,
+        "lluvia": 1.1,
+        "alertas": [],
+        "registrado_por": "623035",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Carabanchel",
+        "temp": 40.5,
+        "humedad": 26.0,
+        "viento": 18.0,
+        "lluvia": 1.8,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.5C)."
+        ],
+        "registrado_por": "182736",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Carabanchel",
+        "temp": 26.7,
+        "humedad": 52.0,
+        "viento": 14.6,
+        "lluvia": 2.2,
+        "alertas": [],
+        "registrado_por": "273645",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Centro",
+        "temp": 40.6,
+        "humedad": 28.0,
+        "viento": 10.4,
+        "lluvia": 1.8,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.6C)."
+        ],
+        "registrado_por": "118273",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Centro",
+        "temp": 29.6,
+        "humedad": 44.0,
+        "viento": 5.7,
+        "lluvia": 2.6,
+        "alertas": [],
+        "registrado_por": "036939",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Chamartín",
+        "temp": 38.5,
+        "humedad": 37.0,
+        "viento": 17.3,
+        "lluvia": 0.6,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (38.5C)."
+        ],
+        "registrado_por": "010203",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Chamartín",
+        "temp": 29.8,
+        "humedad": 39.0,
+        "viento": 10.9,
+        "lluvia": 1.3,
+        "alertas": [],
+        "registrado_por": "142536",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Chamberí",
+        "temp": 41.2,
+        "humedad": 40.0,
+        "viento": 19.9,
+        "lluvia": 1.0,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (41.2C)."
+        ],
+        "registrado_por": "987654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Chamberí",
+        "temp": 29.5,
+        "humedad": 45.0,
+        "viento": 12.4,
+        "lluvia": 4.2,
+        "alertas": [],
+        "registrado_por": "147258",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Ciudad Lineal",
+        "temp": 40.7,
+        "humedad": 37.0,
+        "viento": 14.6,
+        "lluvia": 2.3,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.7C)."
+        ],
+        "registrado_por": "654321",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Ciudad Lineal",
+        "temp": 29.4,
+        "humedad": 45.0,
+        "viento": 5.1,
+        "lluvia": 2.0,
+        "alertas": [],
+        "registrado_por": "635241",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Fuencarral-El Pardo",
+        "temp": 40.4,
+        "humedad": 30.0,
+        "viento": 11.6,
+        "lluvia": 0.2,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.4C)."
+        ],
+        "registrado_por": "321654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Fuencarral-El Pardo",
+        "temp": 29.3,
+        "humedad": 53.0,
+        "viento": 10.0,
+        "lluvia": 2.4,
+        "alertas": [],
+        "registrado_por": "789456",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Hortaleza",
+        "temp": 41.6,
+        "humedad": 41.0,
+        "viento": 10.8,
+        "lluvia": 2.5,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (41.6C)."
+        ],
+        "registrado_por": "849562",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Hortaleza",
+        "temp": 28.3,
+        "humedad": 39.0,
+        "viento": 11.6,
+        "lluvia": 2.7,
+        "alertas": [],
+        "registrado_por": "963852",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Latina",
+        "temp": 40.7,
+        "humedad": 32.0,
+        "viento": 12.6,
+        "lluvia": 1.6,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.7C)."
+        ],
+        "registrado_por": "258741",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Latina",
+        "temp": 27.4,
+        "humedad": 48.0,
+        "viento": 13.5,
+        "lluvia": 3.3,
+        "alertas": [],
+        "registrado_por": "741852",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Moncloa-Aravaca",
+        "temp": 39.2,
+        "humedad": 41.0,
+        "viento": 13.1,
+        "lluvia": 1.3,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (39.2C)."
+        ],
+        "registrado_por": "852963",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Moncloa-Aravaca",
+        "temp": 29.8,
+        "humedad": 38.0,
+        "viento": 12.1,
+        "lluvia": 2.9,
+        "alertas": [],
+        "registrado_por": "369258",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Moratalaz",
+        "temp": 39.7,
+        "humedad": 26.0,
+        "viento": 14.8,
+        "lluvia": 1.0,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (39.7C)."
+        ],
+        "registrado_por": "456789",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Moratalaz",
+        "temp": 28.4,
+        "humedad": 41.0,
+        "viento": 11.0,
+        "lluvia": 1.4,
+        "alertas": [],
+        "registrado_por": "159753",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Puente de Vallecas",
+        "temp": 39.8,
+        "humedad": 34.0,
+        "viento": 13.7,
+        "lluvia": 2.3,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (39.8C)."
+        ],
+        "registrado_por": "101010",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Puente de Vallecas",
+        "temp": 26.0,
+        "humedad": 50.0,
+        "viento": 8.2,
+        "lluvia": 4.3,
+        "alertas": [],
+        "registrado_por": "100375",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Retiro",
+        "temp": 40.2,
+        "humedad": 32.0,
+        "viento": 14.5,
+        "lluvia": 0.2,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.2C)."
+        ],
+        "registrado_por": "850369",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Retiro",
+        "temp": 27.9,
+        "humedad": 48.0,
+        "viento": 14.0,
+        "lluvia": 2.9,
+        "alertas": [],
+        "registrado_por": "036673",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Salamanca",
+        "temp": 39.5,
+        "humedad": 38.0,
+        "viento": 12.3,
+        "lluvia": 0.4,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (39.5C)."
+        ],
+        "registrado_por": "623035",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Salamanca",
+        "temp": 26.4,
+        "humedad": 48.0,
+        "viento": 7.5,
+        "lluvia": 1.0,
+        "alertas": [],
+        "registrado_por": "182736",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "San Blas-Canillejas",
+        "temp": 39.6,
+        "humedad": 30.0,
+        "viento": 10.5,
+        "lluvia": 2.9,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (39.6C)."
+        ],
+        "registrado_por": "273645",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "San Blas-Canillejas",
+        "temp": 27.7,
+        "humedad": 38.0,
+        "viento": 6.1,
+        "lluvia": 2.6,
+        "alertas": [],
+        "registrado_por": "118273",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Tetuán",
+        "temp": 41.5,
+        "humedad": 41.0,
+        "viento": 18.2,
+        "lluvia": 0.4,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (41.5C)."
+        ],
+        "registrado_por": "036939",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Tetuán",
+        "temp": 29.1,
+        "humedad": 41.0,
+        "viento": 11.6,
+        "lluvia": 2.3,
+        "alertas": [],
+        "registrado_por": "010203",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Usera",
+        "temp": 39.9,
+        "humedad": 38.0,
+        "viento": 15.0,
+        "lluvia": 0.1,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (39.9C)."
+        ],
+        "registrado_por": "142536",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Usera",
+        "temp": 26.2,
+        "humedad": 37.0,
+        "viento": 7.1,
+        "lluvia": 3.2,
+        "alertas": [],
+        "registrado_por": "987654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Vicálvaro",
+        "temp": 39.5,
+        "humedad": 40.0,
+        "viento": 18.9,
+        "lluvia": 1.9,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (39.5C)."
+        ],
+        "registrado_por": "147258",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Vicálvaro",
+        "temp": 26.4,
+        "humedad": 37.0,
+        "viento": 5.1,
+        "lluvia": 0.7,
+        "alertas": [],
+        "registrado_por": "654321",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Villa de Vallecas",
+        "temp": 39.2,
+        "humedad": 30.0,
+        "viento": 13.1,
+        "lluvia": 0.9,
+        "alertas": [
+            "AVISO: Alerta Naranja. Temperatura elevada (39.2C)."
+        ],
+        "registrado_por": "635241",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Villa de Vallecas",
+        "temp": 29.5,
+        "humedad": 52.0,
+        "viento": 13.8,
+        "lluvia": 4.3,
+        "alertas": [],
+        "registrado_por": "321654",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-01",
+        "distrito": "Villaverde",
+        "temp": 40.7,
+        "humedad": 41.0,
+        "viento": 17.7,
+        "lluvia": 1.9,
+        "alertas": [
+            "CRITICO: Alerta Roja. Calor extremo (40.7C)."
+        ],
+        "registrado_por": "789456",
+        "editado": false
+    },
+    {
+        "fecha": "2025-07-02",
+        "distrito": "Villaverde",
+        "temp": 27.7,
+        "humedad": 44.0,
+        "viento": 11.9,
+        "lluvia": 0.5,
+        "alertas": [],
+        "registrado_por": "849562",
+        "editado": false
+    }
+]

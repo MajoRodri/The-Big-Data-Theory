@@ -1,0 +1,35 @@
+{
+    "distritos_oficiales": [
+        "Arganzuela",
+        "Barajas",
+        "Carabanchel",
+        "Centro",
+        "Chamartín",
+        "Chamberí",
+        "Ciudad Lineal",
+        "Fuencarral-El Pardo",
+        "Hortaleza",
+        "Latina",
+        "Moncloa-Aravaca",
+        "Moratalaz",
+        "Puente de Vallecas",
+        "Retiro",
+        "Salamanca",
+        "San Blas-Canillejas",
+        "Tetuán",
+        "Usera",
+        "Vicálvaro",
+        "Villa de Vallecas",
+        "Villaverde"
+    ],
+        "umbrales": {
+    "temp_max_naranja": 35.0,
+    "temp_max_roja": 40.0,
+    "temp_min_alerta": 2.0,
+    "temp_min_critica": -5.0,
+    "viento_max": 40,
+    "lluvia_naranja": 20.0,
+    "lluvia_roja": 50.0,
+    "humedad_min": 15
+}
+}
