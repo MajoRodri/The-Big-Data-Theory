@@ -10,6 +10,7 @@ import alertas
 import persistencia
 import auth
 import analitica
+import Api
 from datetime import datetime
 
 class InterfazPyClima:
@@ -92,6 +93,22 @@ class InterfazPyClima:
     # Flujo completo: solicita datos climáticos, valida, evalúa alertas y guarda
     def registrar_datos(self):
         self._mostrar_encabezado("📝 REGISTRAR NUEVOS DATOS CLIMÁTICOS")
+        print("1. Registro manual")
+        print("2. Registro automático desde API")
+        print("3. Volver al menú principal")
+        self._mostrar_separador()
+
+        opcion_registro = input("Seleccione una opción (1-3): ").strip()
+
+        if opcion_registro == "1":
+            self._registrar_datos_manual()
+        elif opcion_registro == "2":
+            self._registrar_datos_api()
+        elif opcion_registro != "3":
+            print("❌ Opción no válida.")
+            input("Presione Enter para continuar...")
+
+    def _registrar_datos_manual(self):
         self.datos = self._cargar_datos()
         
         while True:
@@ -173,6 +190,67 @@ class InterfazPyClima:
             except Exception as e:
                 print(f"❌ Error inesperado: {e}")
                 if input("¿Desea ingresar los datos nuevamente? (s/n): ").lower() != 's': return
+
+    def _registrar_datos_api(self):
+        self.datos = self._cargar_datos()
+
+        while True:
+            try:
+                fecha = datetime.now().strftime("%Y-%m-%d")
+
+                print(f"\n📅 Fecha automática del registro: {fecha}")
+                print("\n[1/1] ZONA/DISTRITO")
+                distrito = validaciones.validar_zona()
+                if not distrito:
+                    return
+
+                if self._validar_duplicado(fecha, distrito):
+                    print(f"⚠️  Ya existe un registro para {distrito} en {fecha}. No se aceptan duplicados.")
+                    if input("¿Desea intentarlo de nuevo? (s/n): ").strip().lower() != "s":
+                        return
+                    continue
+
+                nuevo_registro = Api.obtener_registro_climatico(
+                    distrito,
+                    usuario_actual=self.usuario_actual,
+                    fecha=fecha,
+                )
+
+                print("\n" + "=" * 50)
+                print("✅ DATOS OBTENIDOS DESDE LA API")
+                print("=" * 50)
+                print(f"📍 Distrito: {nuevo_registro['distrito']}")
+                print(f"📅 Fecha: {nuevo_registro['fecha']}")
+                print(f"🌡️  Temperatura: {nuevo_registro['temperatura']}°C")
+                print(f"💧 Humedad: {nuevo_registro['humedad']}%")
+                print(f"💨 Viento: {nuevo_registro['viento']} km/h")
+                print(f"🌧️  Lluvia: {nuevo_registro['lluvia']} mm")
+
+                if nuevo_registro["alertas"]:
+                    print("\n🚨 ALERTAS PRELIMINARES DETECTADAS:")
+                    for alerta in nuevo_registro["alertas"]:
+                        print(f"   {alerta}")
+                else:
+                    print("\n✅ Niveles climáticos normales (Sin alertas)")
+
+                self._mostrar_separador()
+                exito = persistencia.registrar_nuevo_dato(nuevo_registro)
+
+                if exito:
+                    self._mostrar_separador()
+                    if input("\n¿Registrar otro dato desde API? (s/n): ").strip().lower() != "s":
+                        return
+                    self.datos = self._cargar_datos()
+                else:
+                    return
+
+            except KeyboardInterrupt:
+                print("\n\n❌ Registro desde API cancelado por el usuario")
+                return
+            except Exception as e:
+                print(f"❌ Error al obtener datos desde la API: {e}")
+                if input("¿Desea intentarlo nuevamente? (s/n): ").strip().lower() != "s":
+                    return
     
     # Menú avanzado de consultas con filtros y opciones posteriores
     def consultar_datos(self):
