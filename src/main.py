@@ -28,6 +28,10 @@ import auth
 import persistencia
 from logger_config import setup_logging
 
+# Cargar variables de entorno desde .env
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BLOQUE PRINCIPAL: if __name__ == "__main__"
