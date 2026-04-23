@@ -174,6 +174,97 @@ class InterfazPyClima:
                 print(f"❌ Error inesperado: {e}")
                 if input("¿Desea ingresar los datos nuevamente? (s/n): ").lower() != 's': return
     
+    def obtener_datos_api(self):
+        """
+        Obtiene datos climáticos desde WeatherAPI para un distrito seleccionado.
+        
+        Flujo:
+        1. Muestra lista de distritos de Madrid desde config.json
+        2. Usuario selecciona uno
+        3. Consulta WeatherAPI
+        4. Muestra datos en pantalla con alertas
+        5. Pide confirmación antes de guardar
+        """
+        import Api  # Importamos el módulo de API aquí
+        
+        self._mostrar_encabezado("📡 OBTENER DATOS DESDE API METEOROLÓGICA")
+        
+        # PASO 1: Obtener lista de distritos desde config.json
+        distritos = persistencia.obtener_distritos_permitidos()
+        if not distritos:
+            print("❌ No se encontraron distritos configurados en config.json")
+            input("Presione Enter para volver...")
+            return
+        
+        # PASO 2: Mostrar lista y pedir selección
+        print("\n📍 Distritos disponibles:")
+        for i, distrito in enumerate(distritos, 1):
+            print(f"   {i}. {distrito}")
+        
+        try:
+            seleccion = int(input("\nSeleccione un distrito (número): ")) - 1
+            if not (0 <= seleccion < len(distritos)):
+                print("❌ Selección inválida")
+                return
+            
+            distrito_seleccionado = distritos[seleccion]
+        except ValueError:
+            print("❌ Ingrese un número válido")
+            return
+        
+        # PASO 3: Traer datos de la API
+        print(f"\n⏳ Consultando WeatherAPI para {distrito_seleccionado}...")
+        try:
+            registro_api = Api.obtener_registro_climatico(
+                ciudad=distrito_seleccionado,
+                usuario_actual=self.usuario_actual
+            )
+        except Exception as error:
+            print(f"❌ Error al consultar la API: {error}")
+            input("Presione Enter para volver...")
+            return
+        
+        # PASO 4: Mostrar datos en pantalla
+        print("\n" + "="*50)
+        print("✅ DATOS OBTENIDOS DE WEATHERAPI")
+        print("="*50)
+        print(f"📍 Distrito: {registro_api['distrito']}")
+        print(f"📅 Fecha: {registro_api['fecha']}")
+        print(f"🌡️  Temperatura: {registro_api['temperatura']}°C")
+        print(f"💧 Humedad: {registro_api['humedad']}%")
+        print(f"💨 Viento: {registro_api['viento']} km/h")
+        print(f"🌧️  Lluvia: {registro_api['lluvia']} mm")
+        print(f"🌤️  Condición: {registro_api['condicion']}")
+        
+        # Mostrar alertas si hay
+        if registro_api['alertas']:
+            print("\n🚨 ALERTAS DETECTADAS:")
+            for alerta in registro_api['alertas']:
+                print(f"   {alerta}")
+        else:
+            print("\n✅ No hay alertas")
+        
+        print("="*50)
+        
+        # PASO 5: Pedir confirmación
+        confirmacion = input("\n¿Desea guardar estos datos? (s/n): ").strip().lower()
+        
+        if confirmacion == 's':
+            # PASO 6: Guardar en JSON
+            try:
+                exito = persistencia.registrar_nuevo_dato(registro_api)
+                if exito:
+                    print("✅ ¡Datos guardados exitosamente!")
+                    self.datos = self._cargar_datos()  # Refrescar datos
+                else:
+                    print("❌ No se pudieron guardar los datos")
+            except Exception as error:
+                print(f"❌ Error al guardar: {error}")
+        else:
+            print("❌ Operación cancelada. Los datos no se guardaron.")
+        
+        input("\nPresione Enter para volver al menú principal...")
+    
     # Menú avanzado de consultas con filtros y opciones posteriores
     def consultar_datos(self):
         while True:
@@ -614,23 +705,26 @@ class InterfazPyClima:
         while True:
             self._mostrar_encabezado("SISTEMA PYCLIMA RESILIENTE v1.0")
             print("1. 📋 Registrar Datos Climáticos")
-            print("2. 🔍 Consultar Datos")
-            print("3. 📚 Ver Histórico (Todas las Zonas)")
-            print("4. 📢 Alertas Activas")
-            print("5. 🔙 Salir")
+            print("2. 📡 Obtener Datos desde API")
+            print("3. 🔍 Consultar Datos")
+            print("4. 📚 Ver Histórico (Todas las Zonas)")
+            print("5. 📢 Alertas Activas")
+            print("6. 🔙 Salir")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-5): ").strip()
+            opcion = input("Seleccione una opción (1-6): ").strip()
 
             if opcion == "1":
                 self.registrar_datos()
             elif opcion == "2":
-                self.consultar_datos()
+                self.obtener_datos_api()
             elif opcion == "3":
-                self.ver_historico()
+                self.consultar_datos()
             elif opcion == "4":
-                self.mostrar_panel_alertas()
+                self.ver_historico()
             elif opcion == "5":
+                self.mostrar_panel_alertas()
+            elif opcion == "6":
                 self.salir()
                 break
             else:
@@ -763,3 +857,95 @@ class InterfazPyClima:
         print("\n✅ Todos los datos han sido guardados correctamente")
         print("🌍 ¡Gracias por usar PyClima Resiliente!")
         print("👋 ¡Hasta pronto!\n")
+
+    def obtener_datos_api(self):
+        """
+        Obtiene datos climáticos desde WeatherAPI y los muestra 
+        antes de guardar (opción de confirmación).
+        
+        Flujo:
+        1. Muestra lista de distritos de Madrid
+        2. Usuario selecciona uno
+        3. Consulta WeatherAPI
+        4. Muestra datos en pantalla
+        5. Pregunta: ¿Guardar? (s/n)
+        """
+        import Api  # Importamos el módulo de API
+    
+        self._mostrar_encabezado("📡 OBTENER DATOS DESDE API METEOROLÓGICA")
+        
+        # PASO 1: Obtener lista de distritos
+        distritos = persistencia.obtener_distritos_permitidos()
+        if not distritos:
+            print("❌ No se encontraron distritos configurados en config.json")
+            input("Presione Enter para volver...")
+            return
+        
+        # PASO 2: Mostrar lista y pedir selección
+        print("\n📍 Distritos disponibles:")
+        for i, distrito in enumerate(distritos, 1):
+            print(f"   {i}. {distrito}")
+        
+        try:
+            seleccion = int(input("\nSeleccione un distrito (número): ")) - 1
+            if not (0 <= seleccion < len(distritos)):
+                print("❌ Selección inválida")
+                return
+            
+            distrito_seleccionado = distritos[seleccion]
+        except ValueError:
+            print("❌ Ingrese un número válido")
+            return
+        
+        # PASO 3: Traer datos de la API
+        print(f"\n⏳ Consultando WeatherAPI para {distrito_seleccionado}...")
+        try:
+            registro_api = Api.obtener_registro_climatico(
+                ciudad=distrito_seleccionado,
+                usuario_actual=self.usuario_actual
+            )
+        except Exception as error:
+            print(f"❌ Error al consultar la API: {error}")
+            input("Presione Enter para volver...")
+            return
+        
+        # PASO 4: Mostrar datos en pantalla
+        print("\n" + "="*50)
+        print("✅ DATOS OBTENIDOS DE WEATHERAPI")
+        print("="*50)
+        print(f"📍 Distrito: {registro_api['distrito']}")
+        print(f"📅 Fecha: {registro_api['fecha']}")
+        print(f"🌡️  Temperatura: {registro_api['temperatura']}°C")
+        print(f"💧 Humedad: {registro_api['humedad']}%")
+        print(f"💨 Viento: {registro_api['viento']} km/h")
+        print(f"🌧️  Lluvia: {registro_api['lluvia']} mm")
+        print(f"🌤️  Condición: {registro_api['condicion']}")
+        
+        # Mostrar alertas si hay
+        if registro_api['alertas']:
+            print("\n🚨 ALERTAS DETECTADAS:")
+            for alerta in registro_api['alertas']:
+                print(f"   {alerta}")
+        else:
+            print("\n✅ No hay alertas")
+        
+        print("="*50)
+        
+        # PASO 5: Pedir confirmación
+        confirmacion = input("\n¿Desea guardar estos datos? (s/n): ").strip().lower()
+        
+        if confirmacion == 's':
+            # PASO 6: Guardar en JSON
+            try:
+                exito = persistencia.registrar_nuevo_dato(registro_api)
+                if exito:
+                    print("✅ ¡Datos guardados exitosamente!")
+                    self.datos = self._cargar_datos()  # Refrescar datos
+                else:
+                    print("❌ No se pudieron guardar los datos")
+            except Exception as error:
+                print(f"❌ Error al guardar: {error}")
+        else:
+            print("❌ Operación cancelada. Los datos no se guardaron.")
+        
+        input("\nPresione Enter para volver al menú principal...")
