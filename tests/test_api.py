@@ -1,5 +1,5 @@
 """
-TESTS PARA PROYECTO II - Ingesta de datos climáticos con WeatherAPI
+TESTS- Ingesta de datos climáticos con WeatherAPI
 
 Estos tests verifican:
 1. Que la conexión a WeatherAPI funciona
@@ -7,7 +7,7 @@ Estos tests verifican:
 3. Que los errores HTTP se manejan adecuadamente
 
 Ejecutar con:
-    pytest tests/test_api_hito1.py -v
+    pytest tests/test_api.py -v
     
 O desde la raíz del proyecto:
     python -m pytest tests/test_api_hito1.py -v

@@ -360,5 +360,47 @@
         "latencia_ms": 56,
         "timestamp": "2026-04-24T20:58:40.766994Z",
         "condicion": "Lluvia  moderada a intervalos"
+    },
+    {
+        "fecha": "2026-04-25",
+        "hora": "00:16:34",
+        "distrito": "Villaverde",
+        "fuente": "api",
+        "proveedor_api": "weatherapi",
+        "temperatura": 17.1,
+        "temp": 17.1,
+        "humedad": 68.0,
+        "viento": 5.0,
+        "lluvia": 0.39,
+        "presion": 1017.0,
+        "descripcion": "Lluvia  moderada a intervalos",
+        "alertas": [],
+        "registrado_por": "100375",
+        "editado": false,
+        "latencia_ms": 128,
+        "timestamp": "2026-04-24T22:16:34.643056Z",
+        "condicion": "Lluvia  moderada a intervalos"
+    },
+    {
+        "fecha": "2026-04-25",
+        "hora": "00:28:27",
+        "distrito": "Centro",
+        "fuente": "api",
+        "proveedor_api": "weatherapi",
+        "temperatura": 30.0,
+        "temp": 30.0,
+        "humedad": 9.0,
+        "viento": 20.2,
+        "lluvia": 0.0,
+        "presion": 1017.0,
+        "descripcion": "Soleado",
+        "alertas": [
+            "🔴 RIESGO MUY ALTO: Humedad muy baja (9.0%). Peligro de incendio."
+        ],
+        "registrado_por": "100375",
+        "editado": false,
+        "latencia_ms": 109,
+        "timestamp": "2026-04-24T22:28:27.952321Z",
+        "condicion": "Soleado"
     }
 ]
