@@ -1,48 +1,88 @@
 """
-Módulo de Interfaz para PyClima - Sistema de Monitoreo Climático
-Interfaz intuitiva y robusta para interacción del usuario
+Módulo de interfaz para The Big Data Theory.
+Sistema de Monitoreo Climático del Ayuntamiento de Madrid.
 """
 
-import json
 import os
+import csv
+import shutil
 import validaciones
 import alertas
 import persistencia
 import auth
 import analitica
 import Api
+import comparativa
+import scheduler as sched_module
 from datetime import datetime
 
-class InterfazPyClima:
-    
-    # Constructor: Inicializa la interfaz cargando datos y configurando usuario actual
+
+class InterfazTBDT:
+
     def __init__(self, ruta_datos=persistencia.ARCHIVO_JSON, usuario_actual=None):
+        """
+        Inicializa la interfaz cargando el histórico de datos y configurando el usuario autenticado.
+
+        Args:
+            ruta_datos (str): Ruta al archivo JSON de datos históricos.
+            usuario_actual (dict): Datos del usuario que ha iniciado sesión.
+        """
         self.ruta_datos = ruta_datos
         self.datos = self._cargar_datos()
         self.zonas_validas = self._obtener_zonas()
         self.usuario_actual = usuario_actual
-        
-    # Carga el histórico completo desde la persistencia
+
     def _cargar_datos(self):
+        """
+        Carga el histórico completo desde la capa de persistencia.
+
+        Returns:
+            list: Lista de registros climáticos almacenados.
+        """
         return persistencia.leer_historico()
-    
-    # Extrae lista única de distritos del histórico
+
     def _obtener_zonas(self):
+        """
+        Extrae la lista única de distritos presentes en el histórico.
+
+        Returns:
+            list: Distritos ordenados alfabéticamente.
+        """
         zonas = set()
         for reg in self.datos:
             if "distrito" in reg:
                 zonas.add(reg["distrito"])
         return sorted(list(zonas)) if zonas else []
-    
-    # Verifica si ya existe un registro con la misma fecha y distrito
+
     def _validar_duplicado(self, fecha, distrito):
+        """
+        Verifica si ya existe un registro con la misma fecha y distrito.
+
+        Args:
+            fecha (str): Fecha en formato AAAA-MM-DD.
+            distrito (str): Nombre del distrito.
+
+        Returns:
+            bool: True si ya existe un duplicado.
+        """
         for reg in self.datos:
             if reg.get("fecha") == str(fecha) and reg.get("distrito", "").lower() == distrito.lower():
                 return True
         return False
-    
-    # Evalúa alertas climáticas usando los umbrales del sistema
+
     def _analizar_alertas(self, temperatura, humedad, viento, lluvia=0):
+        """
+        Evalúa alertas climáticas usando los umbrales configurados en el sistema.
+
+        Args:
+            temperatura (float): Temperatura en grados Celsius.
+            humedad (float): Humedad relativa en porcentaje.
+            viento (float): Velocidad del viento en km/h.
+            lluvia (float): Precipitación en mm.
+
+        Returns:
+            list: Lista de mensajes de alerta activos.
+        """
         umbrales = persistencia.obtener_umbrales_alerta()
         datos_registro = {
             "temperatura": temperatura,
@@ -51,25 +91,49 @@ class InterfazPyClima:
             "lluvia": lluvia
         }
         return alertas.evaluar_alertas(datos_registro, umbrales)
-    
-    # Imprime encabezado con título formateado
+
     def _mostrar_encabezado(self, titulo):
+        """
+        Imprime un encabezado visual formateado con el título dado.
+
+        Args:
+            titulo (str): Texto a mostrar como encabezado.
+        """
         print("\n" + "="*50)
         print(f"  {titulo}")
         print("="*50)
-    
-    # Imprime línea separadora visual
+
     def _mostrar_separador(self):
+        """Imprime una línea separadora visual."""
         print("-" * 50)
 
-    # Normaliza y valida nombre de distrito contra la lista oficial
     def _normalizar_distrito_oficial(self, distrito):
+        """
+        Normaliza y valida un nombre de distrito contra la lista oficial de Madrid.
+
+        Args:
+            distrito (str): Nombre del distrito a validar.
+
+        Returns:
+            str or None: Nombre oficial si es válido, None si no se encuentra.
+        """
         distritos_oficiales = persistencia.obtener_distritos_permitidos()
         mapa_distritos = {item.lower(): item for item in distritos_oficiales}
         return mapa_distritos.get(distrito.strip().lower())
 
-    # Solicita número editable con validación de rango (mín/máx)
     def _pedir_numero_editable(self, etiqueta, valor_actual, minimo=None, maximo=None):
+        """
+        Solicita un valor numérico con validación de rango, permitiendo mantener el actual.
+
+        Args:
+            etiqueta (str): Texto descriptivo del campo.
+            valor_actual (float): Valor actual del campo.
+            minimo (float, optional): Límite mínimo permitido.
+            maximo (float, optional): Límite máximo permitido.
+
+        Returns:
+            float: Valor introducido o valor actual si el usuario presiona Enter.
+        """
         while True:
             entrada = input(f"{etiqueta} (actual: {valor_actual}) [Enter para mantener]: ").strip()
             if not entrada:
@@ -90,8 +154,10 @@ class InterfazPyClima:
 
             return valor
 
-    # Flujo completo: solicita datos climáticos, valida, evalúa alertas y guarda
     def registrar_datos(self):
+        """
+        Muestra el submenú de registro y delega en el flujo manual o desde API.
+        """
         self._mostrar_encabezado("📝 REGISTRAR NUEVOS DATOS CLIMÁTICOS")
         print("1. Registro manual")
         print("2. Registro automático desde API")
@@ -109,64 +175,61 @@ class InterfazPyClima:
             input("Presione Enter para continuar...")
 
     def _registrar_datos_manual(self):
+        """
+        Solicita los datos climáticos al usuario paso a paso, los valida,
+        evalúa alertas preliminares y los persiste en el histórico.
+        """
         self.datos = self._cargar_datos()
-        
+
         while True:
             try:
-                # Paso 1: Captura fecha del registro
                 print("\n[1/6] FECHA DEL REGISTRO")
                 fecha = validaciones.validar_fecha()
-                
-                # Paso 2: Captura zona/distrito
+
                 print("\n[2/6] ZONA/DISTRITO")
                 distrito = validaciones.validar_zona()
-                if not distrito: return
-                
-                # Paso 3: Valida que no exista registro duplicado
+                if not distrito:
+                    return
+
                 if self._validar_duplicado(fecha, distrito):
                     print(f"⚠️  Ya existe un registro para {distrito} en {fecha}. No se aceptan duplicados.")
-                    if input("¿Desea ingresar datos nuevamente? (s/n): ").lower() != 's': return
+                    if input("¿Desea ingresar datos nuevamente? (s/n): ").lower() != 's':
+                        return
                     continue
-                
-                # Paso 4: Captura temperatura
+
                 print("\n[3/6] TEMPERATURA")
                 temperatura = validaciones.validar_temperatura()
-                
-                # Paso 5: Captura humedad
+
                 print("\n[4/6] HUMEDAD")
                 humedad = validaciones.validar_humedad()
-                
-                # Paso 6: Captura velocidad del viento
+
                 print("\n[5/6] VELOCIDAD DEL VIENTO")
                 viento = validaciones.validar_viento()
 
-                # Paso 7: Captura precipitaciones
                 print("\n[6/6] PRECIPITACIONES (LLUVIA)")
                 lluvia = validaciones.validar_lluvia()
 
                 print("\n" + "="*50)
                 print("✅ DATOS VALIDADOS EXITOSAMENTE")
                 print("="*50)
-                
+
                 umbrales = persistencia.obtener_umbrales_alerta()
                 datos_registro = {"temperatura": temperatura, "humedad": humedad, "viento": viento, "lluvia": lluvia}
                 alertas_activas = alertas.evaluar_alertas(datos_registro, umbrales)
-                
-                # --- PASO 1: MOSTRAR ALERTAS ANTES DE GUARDAR ---
+
                 if alertas_activas:
                     print("\n🚨 ALERTAS PRELIMINARES DETECTADAS:")
-                    for alerta in alertas_activas: 
+                    for alerta in alertas_activas:
                         print(f"   {alerta}")
                 else:
                     print("\n✅ Niveles climáticos normales (Sin alertas)")
                 print("-" * 50)
-                # ------------------------------------------------
 
                 nuevo_registro = {
                     "fecha": fecha,
                     "distrito": distrito,
-                    "temperatura": temperatura, 
-                    "temp": temperatura,        
+                    "temperatura": temperatura,
+                    "temp": temperatura,
                     "humedad": humedad,
                     "viento": viento,
                     "lluvia": 0.0,
@@ -174,24 +237,30 @@ class InterfazPyClima:
                     "registrado_por": self.usuario_actual["num_empleado"] if self.usuario_actual else "Desconocido",
                     "editado": False
                 }
-                
-                # Aquí el sistema saltará a persistencia.py y hará la pregunta de confirmación
+
                 exito = persistencia.registrar_nuevo_dato(nuevo_registro)
-                
+
                 if exito:
                     self._mostrar_separador()
-                    if input("\n¿Registrar otro dato? (s/n): ").strip().lower() != 's': return
+                    if input("\n¿Registrar otro dato? (s/n): ").strip().lower() != 's':
+                        return
                 else:
                     return
-                    
+
             except KeyboardInterrupt:
                 print("\n\n❌ Registro cancelado por el usuario")
                 return
             except Exception as e:
                 print(f"❌ Error inesperado: {e}")
-                if input("¿Desea ingresar los datos nuevamente? (s/n): ").lower() != 's': return
+                if input("¿Desea ingresar los datos nuevamente? (s/n): ").lower() != 's':
+                    return
 
     def _registrar_datos_api(self):
+        """
+        Registra datos climáticos obteniendo la lectura directamente desde WeatherAPI.
+
+        Solicita el distrito, consulta la API, muestra los datos y confirma el guardado.
+        """
         self.datos = self._cargar_datos()
 
         while True:
@@ -215,6 +284,12 @@ class InterfazPyClima:
                     usuario_actual=self.usuario_actual,
                     fecha=fecha,
                 )
+
+                if nuevo_registro is None:
+                    print("❌ No se pudo obtener datos desde API.")
+                    if input("¿Desea intentarlo nuevamente? (s/n): ").strip().lower() != "s":
+                        return
+                    continue
 
                 print("\n" + "=" * 50)
                 print("✅ DATOS OBTENIDOS DESDE LA API")
@@ -251,46 +326,41 @@ class InterfazPyClima:
                 print(f"❌ Error al obtener datos desde la API: {e}")
                 if input("¿Desea intentarlo nuevamente? (s/n): ").strip().lower() != "s":
                     return
-    
+
     def obtener_datos_api(self):
         """
-        Obtiene datos climáticos desde WeatherAPI para un distrito seleccionado.
-        
-        Flujo:
-        1. Muestra lista de distritos de Madrid desde config.json
-        2. Usuario selecciona uno
-        3. Consulta WeatherAPI
-        4. Muestra datos en pantalla con alertas
-        5. Pide confirmación antes de guardar
+        Obtiene datos climáticos desde WeatherAPI para un distrito seleccionado y
+        ofrece al usuario la posibilidad de guardarlos.
+
+        Args:
+            Sin parámetros adicionales. Lee los distritos disponibles desde config.json.
+
+        Returns:
+            None. Los datos se muestran en pantalla y opcionalmente se guardan.
         """
-        import Api  # Importamos el módulo de API aquí
-        
         self._mostrar_encabezado("📡 OBTENER DATOS DESDE API METEOROLÓGICA")
-        
-        # PASO 1: Obtener lista de distritos desde config.json
+
         distritos = persistencia.obtener_distritos_permitidos()
         if not distritos:
             print("❌ No se encontraron distritos configurados en config.json")
             input("Presione Enter para volver...")
             return
-        
-        # PASO 2: Mostrar lista y pedir selección
+
         print("\n📍 Distritos disponibles:")
         for i, distrito in enumerate(distritos, 1):
             print(f"   {i}. {distrito}")
-        
+
         try:
             seleccion = int(input("\nSeleccione un distrito (número): ")) - 1
             if not (0 <= seleccion < len(distritos)):
                 print("❌ Selección inválida")
                 return
-            
+
             distrito_seleccionado = distritos[seleccion]
         except ValueError:
             print("❌ Ingrese un número válido")
             return
-        
-        # PASO 3: Traer datos de la API
+
         print(f"\n⏳ Consultando WeatherAPI para {distrito_seleccionado}...")
         try:
             registro_api = Api.obtener_registro_climatico(
@@ -301,8 +371,12 @@ class InterfazPyClima:
             print(f"❌ Error al consultar la API: {error}")
             input("Presione Enter para volver...")
             return
-        
-        # PASO 4: Mostrar datos en pantalla
+
+        if registro_api is None:
+            print("❌ No se pudo obtener datos de WeatherAPI.")
+            input("Presione Enter para volver...")
+            return
+
         print("\n" + "="*50)
         print("✅ DATOS OBTENIDOS DE WEATHERAPI")
         print("="*50)
@@ -313,55 +387,54 @@ class InterfazPyClima:
         print(f"💨 Viento: {registro_api['viento']} km/h")
         print(f"🌧️  Lluvia: {registro_api['lluvia']} mm")
         print(f"🌤️  Condición: {registro_api['condicion']}")
-        
-        # Mostrar alertas si hay
+
         if registro_api['alertas']:
             print("\n🚨 ALERTAS DETECTADAS:")
             for alerta in registro_api['alertas']:
                 print(f"   {alerta}")
         else:
             print("\n✅ No hay alertas")
-        
+
         print("="*50)
-        
-        # PASO 5: Pedir confirmación
+
         confirmacion = input("\n¿Desea guardar estos datos? (s/n): ").strip().lower()
-        
+
         if confirmacion == 's':
-            # PASO 6: Guardar en JSON
             try:
                 exito = persistencia.registrar_nuevo_dato(registro_api)
                 if exito:
                     print("✅ ¡Datos guardados exitosamente!")
-                    self.datos = self._cargar_datos()  # Refrescar datos
+                    self.datos = self._cargar_datos()
                 else:
                     print("❌ No se pudieron guardar los datos")
             except Exception as error:
                 print(f"❌ Error al guardar: {error}")
         else:
             print("❌ Operación cancelada. Los datos no se guardaron.")
-        
+
         input("\nPresione Enter para volver al menú principal...")
-    
-    # Menú avanzado de consultas con filtros y opciones posteriores
+
     def consultar_datos(self):
+        """
+        Muestra el menú avanzado de consultas con filtros por zona, fecha y usuario.
+        """
         while True:
             self._mostrar_encabezado("📊 CONSULTAR DATOS 📊 ")
-            self.datos = self._cargar_datos() # Refrescar datos
-            
+            self.datos = self._cargar_datos()
+
             if not self.datos:
                 print("❌ No hay datos registrados en el sistema.")
                 input("Presione Enter para continuar...")
                 return
-                
+
             print("1. 📍 Filtrar por Zona/Distrito")
             print("2. 📅 Filtrar por Fecha")
             print("3. 👤 Filtrar por Usuario (Mis registros / Editar)")
             print("4. ⬅️  Volver al menú principal")
             self._mostrar_separador()
-            
+
             opcion = input("Seleccione un filtro (1-4): ").strip()
-            
+
             if opcion == "1":
                 self._menu_consultar_zona()
             elif opcion == "2":
@@ -369,39 +442,36 @@ class InterfazPyClima:
             elif opcion == "3":
                 self._menu_consultar_usuario()
             elif opcion == "4":
-                break # Sale del bucle y vuelve al menú principal
+                break
             else:
                 print("❌ Opción no válida.")
-                continue # Vuelve a mostrar el menú de consultas
-                
-            # -----------------------------------------
-            # OPCIONES POSTERIORES (Según el esquema)
-            # -----------------------------------------
+                continue
+
             if opcion in ["1", "2", "3"]:
                 print("\n" + "="*50)
                 self._mostrar_encabezado("OPCIONES POSTERIORES:")
                 print("1. Hacer otra consulta")
                 print("2. Volver al menú principal")
                 print("3. Salir del sistema")
-                
+
                 post_opcion = input("¿Qué desea hacer ahora? (1-3): ").strip()
-                
+
                 if post_opcion == "2":
-                    break # Rompe el bucle de consultas, vuelve al principal
+                    break
                 elif post_opcion == "3":
                     self.salir()
-                    exit() # Cierra el programa por completo
-                # Si elige "1", el bucle while True vuelve a empezar solo
+                    exit()
 
     def _menu_consultar_fecha(self):
-        """Lógica extraída para buscar por fecha exacta"""
+        """
+        Busca y muestra todos los registros correspondientes a una fecha exacta.
+        """
         print("\n📅 BÚSQUEDA POR FECHA")
-        # ¡Aquí usamos tu módulo DEV 2 para garantizar el formato AAAA-MM-DD!
         fecha_buscada = validaciones.validar_fecha()
-        
+
         print(f"\n📊 Datos del día: {fecha_buscada}")
         self._mostrar_separador()
-        
+
         encontrados = 0
         for reg in self.datos:
             if reg.get("fecha") == fecha_buscada:
@@ -413,54 +483,54 @@ class InterfazPyClima:
                 print(f"   💨 Viento: {reg.get('viento', 0)} km/h")
                 print(f"   🌧️  Lluvia: {reg.get('lluvia', 0)} mm")
 
-                alertas_locales = self._analizar_alertas(temp, reg.get('humedad', 0), reg.get('viento', 0), reg.get('lluvia', 0))
-                for alerta in alertas_locales: 
+                alertas_locales = self._analizar_alertas(
+                    temp, reg.get('humedad', 0), reg.get('viento', 0), reg.get('lluvia', 0)
+                )
+                for alerta in alertas_locales:
                     print(f"   {alerta}")
                 print("-" * 30)
-                
+
         if encontrados == 0:
             print(f"❌ No hay datos registrados para la fecha {fecha_buscada}")
         else:
             print(f"✅ Total de registros encontrados: {encontrados}")
-    
+
     def _menu_consultar_usuario(self):
-        """Lógica extraída para buscar por operario usando el traductor"""
+        """
+        Busca registros por operario mostrando el directorio de empleados con datos registrados,
+        y permite editar los registros propios.
+        """
         print("\n👤 BÚSQUEDA POR OPERARIO")
-        
-        # 1. Escanear el JSON para ver quién ha participado
+
         operarios_ids = set()
         for reg in self.datos:
             if "registrado_por" in reg:
                 operarios_ids.add(reg["registrado_por"])
-                
+
         lista_operarios = list(operarios_ids)
-        
+
         if not lista_operarios:
             print("❌ No hay registros asociados a ningún operario.")
             return
 
-        # 2. Mostrar el directorio usando la función traductora de auth.py
         print("\n📋 Directorio de operarios con registros:")
         for i, op_id in enumerate(lista_operarios, 1):
             nombre_completo = auth.obtener_nombre_operario(op_id)
-            
-            # --- NUEVA LÓGICA DE RESALTADO ---
-            # Verificamos si hay un usuario logueado y si su número coincide con el de la lista
+
             if self.usuario_actual and op_id == self.usuario_actual.get("num_empleado"):
                 print(f"   {i}. {nombre_completo}  ⬅️  (ESTE ERES TÚ)")
             else:
                 print(f"   {i}. {nombre_completo}")
-            
-        # 3. Selección y filtrado
+
         try:
             seleccion = int(input("\nSeleccione un operario (número): ")) - 1
             if 0 <= seleccion < len(lista_operarios):
                 op_seleccionado = lista_operarios[seleccion]
                 nombre_seleccionado = auth.obtener_nombre_operario(op_seleccionado)
-                
+
                 print(f"\n📊 Datos registrados por: {nombre_seleccionado}")
                 self._mostrar_separador()
-                
+
                 encontrados = 0
                 registros_operario = []
                 for indice, reg in enumerate(self.datos):
@@ -472,7 +542,7 @@ class InterfazPyClima:
                         print(f"{encontrados}. 📅 {reg.get('fecha')} | 📍 {reg.get('distrito', 'Desconocida')}{estado_edicion}")
                         print(f"   🌡️  T: {temp}°C | 💧 H: {reg.get('humedad', 0)}% | 💨 V: {reg.get('viento', 0)} km/h")
                         print("-" * 30)
-                        
+
                 print(f"✅ Total de registros de este operario: {encontrados}")
 
                 if self.usuario_actual and op_seleccionado == self.usuario_actual.get("num_empleado") and registros_operario:
@@ -487,7 +557,12 @@ class InterfazPyClima:
             print("❌ Ingrese un número válido")
 
     def _editar_registro_usuario(self, registros_operario):
-        """Permite editar una sola vez un registro propio seleccionado desde la consulta por usuario."""
+        """
+        Permite editar una sola vez un registro propio seleccionado desde la consulta por usuario.
+
+        Args:
+            registros_operario (list): Lista de tuplas (índice_real, registro) del operario actual.
+        """
         try:
             seleccion = input("Seleccione el número del registro a editar (Enter para cancelar): ").strip()
             if not seleccion:
@@ -534,12 +609,17 @@ class InterfazPyClima:
             lluvia_final = self._pedir_numero_editable("Nueva lluvia", lluvia_actual, 0)
 
             for i, reg in enumerate(self.datos):
-                if i != indice_real and reg.get("fecha") == registro.get("fecha") and reg.get("distrito", "").lower() == distrito_final.lower():
-                    print("❌ No se puede guardar la edición porque crearía un registro duplicado para esa fecha y distrito.")
+                if (i != indice_real
+                        and reg.get("fecha") == registro.get("fecha")
+                        and reg.get("distrito", "").lower() == distrito_final.lower()):
+                    print("❌ No se puede guardar la edición porque crearía un registro duplicado.")
                     return
 
             umbrales = persistencia.obtener_umbrales_alerta()
-            datos_registro = {"temperatura": temp_final, "humedad": humedad_final, "viento": viento_final, "lluvia": lluvia_final}
+            datos_registro = {
+                "temperatura": temp_final, "humedad": humedad_final,
+                "viento": viento_final, "lluvia": lluvia_final
+            }
             alertas_activas = alertas.evaluar_alertas(datos_registro, umbrales)
 
             self.datos[indice_real]["distrito"] = distrito_final
@@ -559,12 +639,17 @@ class InterfazPyClima:
 
         except ValueError:
             print("❌ Has introducido un valor numérico no válido. No se guardaron cambios.")
-    
+
     def _mostrar_datos_zona(self, zona):
-        """Muestra todos los datos de una zona iterando sobre la LISTA"""
+        """
+        Muestra todos los registros de una zona con sus alertas calculadas.
+
+        Args:
+            zona (str): Nombre del distrito a mostrar.
+        """
         print(f"\n📊 Datos de: {zona}")
         self._mostrar_separador()
-        
+
         encontrados = 0
         for reg in self.datos:
             if reg.get("distrito", "").lower() == zona.lower():
@@ -574,25 +659,30 @@ class InterfazPyClima:
                 print(f"   🌡️  Temperatura: {temp}°C")
                 print(f"   💧 Humedad: {reg['humedad']}%")
                 print(f"   💨 Viento: {reg['viento']} km/h")
-                
+
                 alertas_locales = self._analizar_alertas(temp, reg['humedad'], reg['viento'], reg.get('lluvia', 0))
-                for alerta in alertas_locales: print(f"   {alerta}")
+                for alerta in alertas_locales:
+                    print(f"   {alerta}")
                 print()
-        
-        if encontrados == 0: print(f"❌ No hay datos para {zona}")
-        else: print(f"✅ Total de registros: {encontrados}")
-    
+
+        if encontrados == 0:
+            print(f"❌ No hay datos para {zona}")
+        else:
+            print(f"✅ Total de registros: {encontrados}")
+
     def ver_historico(self):
-        """Muestra histórico completo con autoría detallada y opciones de filtrado"""
+        """
+        Muestra el histórico completo con autoría detallada y opciones de filtrado y gráficas.
+        """
         while True:
             self._mostrar_encabezado("📈 HISTÓRICO COMPLETO DE TODAS LAS ZONAS")
             self.datos = self._cargar_datos()
-            
+
             if not self.datos:
                 print("❌ No hay datos registrados en el sistema.")
                 input("Presione Enter para continuar...")
                 return
-                
+
             print("1.Ver histórico completo")
             print("2.Ver gráfica del histórico")
             print("3.Volver al menú principal")
@@ -613,40 +703,37 @@ class InterfazPyClima:
             print(f"\n{'='*50}")
             for reg in self.datos:
                 temp = reg.get('temp', reg.get('temperatura', 0))
-                
-                # --- TRADUCTOR DE IDENTIDADES EN ACCIÓN ---
                 operario_id = reg.get("registrado_por", "Desconocido")
                 nombre_operario = auth.obtener_nombre_operario(operario_id)
-                
+
                 print(f"📅 {reg['fecha']} | 📍 {reg.get('distrito', 'Desconocida')}")
                 print(f"   🌡️  T: {temp}°C | 💧 H: {reg.get('humedad', 0)}% | 💨 V: {reg.get('viento', 0)} km/h")
 
-                alertas_locales = self._analizar_alertas(temp, reg.get('humedad', 0), reg.get('viento', 0), reg.get('lluvia', 0))
+                alertas_locales = self._analizar_alertas(
+                    temp, reg.get('humedad', 0), reg.get('viento', 0), reg.get('lluvia', 0)
+                )
                 for alerta in alertas_locales:
                     print(f"   {alerta}")
 
-                # Imprimimos el autor
                 print(f"   {nombre_operario}")
-                # Avisamos si el registro sufrió una corrección
                 if reg.get("editado"):
                     print("   ⚠️ (Este registro ha sido editado/corregido)")
-                    
+
                 self._mostrar_separador()
-            
+
             print(f"✅ Total de registros en la base de datos: {len(self.datos)}")
             print(f"{'='*50}")
-            
-            # --- SUBMENÚ DE NAVEGACIÓN Y FILTROS (Punto 7) ---
+
             self._mostrar_encabezado("OPCIONES DE HISTÓRICO:")
             print("1. 🔍 Aplicar filtros de búsqueda (Zona / Fecha / Usuario)")
             print("2. 📊 Generar gráfica general")
             print("3. ⬅️  Volver al menú principal")
-            
+
             opcion = input("¿Qué desea hacer ahora? (1-3): ").strip()
-            
+
             if opcion == "1":
                 self.consultar_datos()
-                break # Al salir de las consultas, volvemos al menú principal para no imprimir el histórico gigante otra vez
+                break
             elif opcion == "2":
                 self.generar_reporte_historico_visual()
             elif opcion == "3":
@@ -656,28 +743,31 @@ class InterfazPyClima:
                 input("Presione Enter para intentarlo de nuevo...")
 
     def mostrar_panel_alertas(self):
-        """Panel de alertas activas con filtros y navegación avanzada (Fase D)"""
+        """
+        Panel de alertas activas con filtros por tipo y navegación avanzada.
+        """
         while True:
             self._mostrar_encabezado("🚨 PANEL DE ALERTAS 🚨")
-            self.datos = self._cargar_datos() # Refrescar
+            self.datos = self._cargar_datos()
             alertas_encontradas = []
 
-            # 1. Recopilamos las alertas actuales
             for reg in self.datos:
                 temp = reg.get('temp', reg.get('temperatura', 0))
-                alertas_locales = self._analizar_alertas(temp, reg.get('humedad', 0), reg.get('viento', 0), reg.get('lluvia', 0))
+                alertas_locales = self._analizar_alertas(
+                    temp, reg.get('humedad', 0), reg.get('viento', 0), reg.get('lluvia', 0)
+                )
                 if alertas_locales:
                     alertas_encontradas.append({
                         'zona': reg.get('distrito', 'Desconocida'),
                         'fecha': reg['fecha'],
                         'alertas': alertas_locales
                     })
+
             if not alertas_encontradas:
                 print("\n✅ No hay alertas activas en ningún distrito en este momento.")
                 input("\nPresione Enter para volver al menú principal...")
                 break
 
-            # 2. Definimos las categorías fijas de alerta basadas en los umbrales
             lista_tipos = [
                 "Alerta de calor",
                 "Alerta de frío",
@@ -686,7 +776,6 @@ class InterfazPyClima:
                 "Alerta de lluvia"
             ]
 
-            # 3. Mostrar menú principal del panel de alertas
             print(f"\n⚠️  Se detectaron {len(alertas_encontradas)} alertas en el histórico.")
             self._mostrar_encabezado("OPCIONES DEL PANEL:")
             print("1. 📅 Ver alertas de hoy")
@@ -699,20 +788,21 @@ class InterfazPyClima:
 
             if opcion == "1":
                 self._mostrar_alertas_hoy(alertas_encontradas)
-                # Mostramos menú posterior y comprobamos si quiere volver al menú principal
-                if self._menu_post_alerta() == "menu_principal": break
+                if self._menu_post_alerta() == "menu_principal":
+                    break
 
             elif opcion == "2":
                 self._imprimir_alertas(alertas_encontradas)
-                # Mostramos menú posterior y comprobamos si quiere volver al menú principal
-                if self._menu_post_alerta() == "menu_principal": break
+                if self._menu_post_alerta() == "menu_principal":
+                    break
 
             elif opcion == "3":
                 accion = self._filtrar_y_mostrar_alertas(alertas_encontradas, lista_tipos)
-                if accion == "menu_principal": break
+                if accion == "menu_principal":
+                    break
 
             elif opcion == "4":
-                break # Rompe el bucle y vuelve al menú principal
+                break
 
             elif opcion == "5":
                 self.salir()
@@ -721,7 +811,13 @@ class InterfazPyClima:
                 print("❌ Opción no válida.")
 
     def generar_reporte_distrito(self, distrito=None, pausa=True):
-        """Intermediario que llama a la grafica por distrito."""
+        """
+        Genera el reporte analítico por distrito delegando en el módulo de analítica.
+
+        Args:
+            distrito (str, optional): Distrito para el reporte. Si es None, se solicita al usuario.
+            pausa (bool): Si True, espera Enter antes de volver al menú.
+        """
         self._mostrar_encabezado("REPORTE ANALÍTICO POR DISTRITO")
         if distrito:
             print(f"\nGenerando gráfica para el distrito: {distrito}")
@@ -734,7 +830,9 @@ class InterfazPyClima:
             input("\n\nPresione: Enter para volver al menú principal...")
 
     def _menu_consultar_zona(self):
-        """Muestra zonas y luego deja elegir ver datos, grafica o ambas cosas."""
+        """
+        Muestra las zonas disponibles y delega en _ofrecer_grafica_zona para la seleccionada.
+        """
         self.zonas_validas = self._obtener_zonas()
         print("\nZonas disponibles:")
         for i, zona in enumerate(self.zonas_validas, 1):
@@ -751,7 +849,12 @@ class InterfazPyClima:
             print("Ingrese un número válido")
 
     def _ofrecer_grafica_zona(self, zona):
-        """Submenu de acciones para el distrito ya seleccionado."""
+        """
+        Submenú de acciones para el distrito ya seleccionado: ver datos, gráfica o ambos.
+
+        Args:
+            zona (str): Nombre del distrito seleccionado.
+        """
         while True:
             self._mostrar_encabezado(f"ACCIONES PARA {zona.upper()}:")
             print("1. Ver datos de este distrito")
@@ -780,17 +883,21 @@ class InterfazPyClima:
             print("Opción no válida.")
 
     def menu_principal(self):
+        """
+        Bucle principal de la aplicación que dirige el flujo entre todos los módulos.
+        """
         while True:
-            self._mostrar_encabezado("SISTEMA PYCLIMA RESILIENTE v1.0")
+            self._mostrar_encabezado("THE BIG DATA THEORY v2.0")
             print("1. 📋 Registrar Datos Climáticos")
             print("2. 📡 Obtener Datos desde API")
             print("3. 🔍 Consultar Datos")
             print("4. 📚 Ver Histórico (Todas las Zonas)")
             print("5. 📢 Alertas Activas")
-            print("6. 🔙 Salir")
+            print("6. 📊 Análisis Avanzado")
+            print("7. 🔙 Salir")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-6): ").strip()
+            opcion = input("Seleccione una opción (1-7): ").strip()
 
             if opcion == "1":
                 self.registrar_datos()
@@ -803,20 +910,343 @@ class InterfazPyClima:
             elif opcion == "5":
                 self.mostrar_panel_alertas()
             elif opcion == "6":
+                self.menu_analisis_avanzado()
+            elif opcion == "7":
                 self.salir()
                 break
             else:
                 print("Opción no válida. Intente de nuevo.")
                 input("Presione Enter para continuar...")
 
+    def menu_analisis_avanzado(self):
+        """
+        Menú de análisis avanzado con exportación, configuración, métricas, comparativa y scheduler.
+        """
+        while True:
+            activo = sched_module.esta_activo()
+            estado_sched = "🟢 ACTIVO" if activo else "🔴 DETENIDO"
+
+            self._mostrar_encabezado("📊 ANÁLISIS AVANZADO")
+            print("1. 📤 Exportar Datos (CSV)")
+            print("2. ⚙️  Configurar Umbrales de Alerta")
+            print("3. 📈 Ver Métricas del Sistema")
+            print("4. 📋 Generar Reporte Automático")
+            print("5. 💾 Backup de Datos")
+            print("6. 🔄 Comparativa Manual vs. API")
+            print(f"7. ⏱️  Scheduler de Ingesta Automática  [{estado_sched}]")
+            print("8. ⬅️  Volver al menú principal")
+            self._mostrar_separador()
+
+            opcion = input("Seleccione una opción (1-8): ").strip()
+
+            if opcion == "1":
+                self.exportar_datos_csv()
+            elif opcion == "2":
+                self.configurar_umbrales_alerta()
+            elif opcion == "3":
+                self.ver_metricas_sistema()
+            elif opcion == "4":
+                self.generar_reporte_automatico()
+            elif opcion == "5":
+                self.backup_datos()
+            elif opcion == "6":
+                self.ver_comparativa_manual_vs_api()
+            elif opcion == "7":
+                self.menu_scheduler()
+            elif opcion == "8":
+                break
+            else:
+                print("❌ Opción no válida.")
+                input("Presione Enter para continuar...")
+
+    def exportar_datos_csv(self):
+        """
+        Exporta el histórico de datos climáticos a un archivo CSV en la carpeta exports/.
+
+        Returns:
+            None. Crea el archivo y muestra la ruta al usuario.
+        """
+        self._mostrar_encabezado("📤 EXPORTAR DATOS A CSV")
+
+        if not self.datos:
+            print("❌ No hay datos para exportar.")
+            input("Presione Enter para volver...")
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nombre_archivo = f"export_datos_climaticos_{timestamp}.csv"
+        ruta_archivo = os.path.join("exports", nombre_archivo)
+
+        os.makedirs("exports", exist_ok=True)
+
+        try:
+            with open(ruta_archivo, 'w', newline='', encoding='utf-8') as csvfile:
+                fieldnames = ['fecha', 'distrito', 'temperatura', 'humedad', 'viento', 'lluvia',
+                             'condicion', 'registrado_por', 'editado']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                writer.writeheader()
+                for registro in self.datos:
+                    fila = {
+                        'fecha': registro.get('fecha', ''),
+                        'distrito': registro.get('distrito', ''),
+                        'temperatura': registro.get('temperatura', registro.get('temp', 0)),
+                        'humedad': registro.get('humedad', 0),
+                        'viento': registro.get('viento', 0),
+                        'lluvia': registro.get('lluvia', 0),
+                        'condicion': registro.get('condicion', ''),
+                        'registrado_por': registro.get('registrado_por', ''),
+                        'editado': 'Sí' if registro.get('editado', False) else 'No'
+                    }
+                    writer.writerow(fila)
+
+            print(f"✅ Exportación completada exitosamente!")
+            print(f"📁 Archivo guardado en: {ruta_archivo}")
+            print(f"📊 Total de registros exportados: {len(self.datos)}")
+
+        except Exception as e:
+            print(f"❌ Error al exportar datos: {e}")
+
+        input("\nPresione Enter para volver al menú de análisis...")
+
+    def configurar_umbrales_alerta(self):
+        """
+        Permite configurar interactivamente los umbrales de alerta climática del sistema.
+        """
+        self._mostrar_encabezado("⚙️ CONFIGURACIÓN DE UMBRALES DE ALERTA")
+
+        try:
+            u = persistencia.obtener_umbrales_alerta()
+            t_max = u.get("temperatura_max", u.get("temp_max_roja", 40.0))
+            t_min = u.get("temperatura_min", u.get("temp_min_critica", -5.0))
+            v_max = u.get("viento_max", 40.0)
+            h_max = u.get("humedad_max", 95.0)
+            ll_max = u.get("lluvia_max", u.get("lluvia_roja", 50.0))
+
+            print("Umbrales actuales:")
+            print(f"  🌡️ Temperatura máxima: {t_max}°C")
+            print(f"  🥶 Temperatura mínima: {t_min}°C")
+            print(f"  💨 Velocidad del viento: {v_max} km/h")
+            print(f"  💧 Humedad máxima: {h_max}%")
+            print(f"  🌧️ Lluvia máxima: {ll_max} mm")
+            print()
+
+            nuevos_umbrales = {
+                "temperatura_max": self._pedir_numero_editable("Temperatura máxima de alerta", t_max, 20, 50),
+                "temperatura_min": self._pedir_numero_editable("Temperatura mínima de alerta", t_min, -20, 10),
+                "viento_max": self._pedir_numero_editable("Velocidad máxima del viento", v_max, 10, 200),
+                "humedad_max": self._pedir_numero_editable("Humedad máxima", h_max, 50, 100),
+                "lluvia_max": self._pedir_numero_editable("Lluvia máxima", ll_max, 5, 500),
+            }
+
+            if persistencia.actualizar_umbrales_alerta(nuevos_umbrales):
+                print("✅ Umbrales de alerta actualizados correctamente!")
+                print("\nNuevos umbrales:")
+                print(f"  🌡️ Temperatura máxima: {nuevos_umbrales['temperatura_max']}°C")
+                print(f"  🥶 Temperatura mínima: {nuevos_umbrales['temperatura_min']}°C")
+                print(f"  💨 Velocidad del viento: {nuevos_umbrales['viento_max']} km/h")
+                print(f"  💧 Humedad máxima: {nuevos_umbrales['humedad_max']}%")
+                print(f"  🌧️ Lluvia máxima: {nuevos_umbrales['lluvia_max']} mm")
+            else:
+                print("❌ Error al guardar los nuevos umbrales.")
+
+        except Exception as e:
+            print(f"❌ Error en la configuración: {e}")
+
+        input("\nPresione Enter para volver al menú de análisis...")
+
+    def ver_metricas_sistema(self):
+        """
+        Muestra métricas y estadísticas generales del sistema: registros, temperaturas y alertas.
+        """
+        self._mostrar_encabezado("📈 MÉTRICAS DEL SISTEMA")
+
+        if not self.datos:
+            print("❌ No hay datos registrados en el sistema.")
+            input("Presione Enter para volver...")
+            return
+
+        total_registros = len(self.datos)
+        distritos = set(reg.get('distrito', '') for reg in self.datos if reg.get('distrito'))
+        fechas = set(reg.get('fecha', '') for reg in self.datos if reg.get('fecha'))
+        usuarios = set(reg.get('registrado_por', '') for reg in self.datos if reg.get('registrado_por'))
+
+        temperaturas = [
+            reg.get('temperatura', reg.get('temp', 0))
+            for reg in self.datos
+            if reg.get('temperatura') or reg.get('temp')
+        ]
+        temp_promedio = sum(temperaturas) / len(temperaturas) if temperaturas else 0
+        temp_max = max(temperaturas) if temperaturas else 0
+        temp_min = min(temperaturas) if temperaturas else 0
+
+        total_alertas = sum(len(reg.get('alertas', [])) for reg in self.datos)
+
+        print("📊 ESTADÍSTICAS GENERALES")
+        print("=" * 40)
+        print(f"📝 Total de registros: {total_registros}")
+        print(f"🏙️  Distritos registrados: {len(distritos)}")
+        print(f"📅 Días con datos: {len(fechas)}")
+        print(f"👥 Usuarios activos: {len(usuarios)}")
+        print()
+
+        print("🌡️ ESTADÍSTICAS TÉRMICAS")
+        print("=" * 40)
+        print(f"📊 Temperatura promedio: {temp_promedio:.1f}°C")
+        print(f"🔥 Temperatura máxima: {temp_max:.1f}°C")
+        print(f"❄️  Temperatura mínima: {temp_min:.1f}°C")
+        print()
+
+        print("🚨 ESTADÍSTICAS DE ALERTAS")
+        print("=" * 40)
+        print(f"⚠️  Total de alertas generadas: {total_alertas}")
+        if total_registros > 0:
+            print(f"📈 Promedio de alertas por registro: {total_alertas/total_registros:.2f}")
+        else:
+            print("📈 Promedio de alertas por registro: 0.00")
+        print()
+
+        if distritos:
+            print("🏆 TOP DISTRITOS POR REGISTROS")
+            print("=" * 40)
+            distrito_counts = {}
+            for reg in self.datos:
+                d = reg.get('distrito', 'Sin distrito')
+                distrito_counts[d] = distrito_counts.get(d, 0) + 1
+
+            sorted_distritos = sorted(distrito_counts.items(), key=lambda x: x[1], reverse=True)
+            for i, (d, count) in enumerate(sorted_distritos[:5], 1):
+                print(f"{i}. {d}: {count} registros")
+
+        input("\nPresione Enter para volver al menú de análisis...")
+
+    def generar_reporte_automatico(self):
+        """
+        Genera un archivo de texto con resumen estadístico del sistema y lo guarda en reports/.
+        """
+        self._mostrar_encabezado("📋 REPORTE AUTOMÁTICO DEL SISTEMA")
+
+        if not self.datos:
+            print("❌ No hay datos para generar el reporte.")
+            input("Presione Enter para volver...")
+            return
+
+        os.makedirs("reports", exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nombre_archivo = f"reporte_sistema_{timestamp}.txt"
+        ruta_archivo = os.path.join("reports", nombre_archivo)
+
+        try:
+            with open(ruta_archivo, 'w', encoding='utf-8') as f:
+                f.write("REPORTE AUTOMÁTICO - THE BIG DATA THEORY\n")
+                f.write("=" * 60 + "\n")
+                f.write(f"Fecha de generación: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                usuario_nombre = self.usuario_actual.get('nombre', 'Desconocido') if self.usuario_actual else 'Sistema'
+                f.write(f"Usuario: {usuario_nombre}\n\n")
+
+                total_registros = len(self.datos)
+                distritos = set(reg.get('distrito', '') for reg in self.datos if reg.get('distrito'))
+                fechas = set(reg.get('fecha', '') for reg in self.datos if reg.get('fecha'))
+
+                f.write("ESTADÍSTICAS GENERALES\n")
+                f.write("-" * 30 + "\n")
+                f.write(f"Total de registros: {total_registros}\n")
+                f.write(f"Distritos registrados: {len(distritos)}\n")
+                f.write(f"Días con datos: {len(fechas)}\n\n")
+
+                temperaturas = [
+                    reg.get('temperatura', reg.get('temp', 0))
+                    for reg in self.datos
+                    if reg.get('temperatura') or reg.get('temp')
+                ]
+                if temperaturas:
+                    f.write("ESTADÍSTICAS TÉRMICAS\n")
+                    f.write("-" * 30 + "\n")
+                    f.write(f"Temperatura promedio: {sum(temperaturas)/len(temperaturas):.1f}°C\n")
+                    f.write(f"Temperatura máxima: {max(temperaturas):.1f}°C\n")
+                    f.write(f"Temperatura mínima: {min(temperaturas):.1f}°C\n\n")
+
+                total_alertas = sum(len(reg.get('alertas', [])) for reg in self.datos)
+                f.write("ESTADÍSTICAS DE ALERTAS\n")
+                f.write("-" * 30 + "\n")
+                f.write(f"Total de alertas generadas: {total_alertas}\n")
+                if total_registros > 0:
+                    f.write(f"Promedio de alertas por registro: {total_alertas/total_registros:.2f}\n\n")
+
+                f.write("ÚLTIMOS 10 REGISTROS\n")
+                f.write("-" * 30 + "\n")
+                registros_ordenados = sorted(self.datos, key=lambda x: x.get('fecha', ''), reverse=True)
+                for i, reg in enumerate(registros_ordenados[:10], 1):
+                    temp = reg.get('temperatura', reg.get('temp', 0))
+                    f.write(f"{i}. {reg.get('fecha', '')} - {reg.get('distrito', '')}: {temp:.1f}°C\n")
+
+                f.write("\n" + "=" * 60 + "\n")
+                f.write("Fin del reporte\n")
+
+            print("✅ Reporte generado exitosamente!")
+            print(f"📁 Archivo guardado en: {ruta_archivo}")
+            print("\n📋 RESUMEN DEL REPORTE:")
+            print(f"   📊 Total registros: {total_registros}")
+            print(f"   🏙️ Distritos: {len(distritos)}")
+            print(f"   🚨 Alertas totales: {total_alertas}")
+
+        except Exception as e:
+            print(f"❌ Error al generar el reporte: {e}")
+
+        input("\nPresione Enter para volver al menú de análisis...")
+
+    def backup_datos(self):
+        """
+        Crea una copia de seguridad del archivo de datos en la carpeta backups/.
+        """
+        self._mostrar_encabezado("💾 BACKUP DE DATOS")
+
+        if not os.path.exists(persistencia.ARCHIVO_JSON):
+            print("❌ No hay archivo de datos para hacer backup.")
+            input("Presione Enter para volver...")
+            return
+
+        os.makedirs("backups", exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nombre_backup = f"backup_datos_climaticos_{timestamp}.json"
+        ruta_backup = os.path.join("backups", nombre_backup)
+
+        try:
+            shutil.copy2(persistencia.ARCHIVO_JSON, ruta_backup)
+
+            tamano_bytes = os.path.getsize(ruta_backup)
+            tamano_mb = tamano_bytes / (1024 * 1024)
+
+            print("✅ Backup creado exitosamente!")
+            print(f"📁 Archivo: {ruta_backup}")
+            print(f"📏 Tamaño: {tamano_mb:.2f} MB")
+            print(f"📊 Registros: {len(self.datos)}")
+
+            backups = [f for f in os.listdir("backups") if f.startswith("backup_") and f.endswith(".json")]
+            print(f"\n📂 Total de backups: {len(backups)}")
+
+        except Exception as e:
+            print(f"❌ Error al crear el backup: {e}")
+
+        input("\nPresione Enter para volver al menú de análisis...")
+
     def generar_reporte_historico_visual(self):
-        """Intermediario que llama a la gráfica general del histórico"""
+        """
+        Genera la gráfica general del histórico delegando en el módulo de analítica.
+        """
         self._mostrar_encabezado("📊 GRÁFICA GENERAL DEL HISTÓRICO")
         analitica.generar_reporte_visual_pro()
         input("\n\nPresione Enter para volver al histórico...")
 
     def _imprimir_alertas(self, lista_alertas):
-        """Función auxiliar para imprimir las alertas de forma estructurada"""
+        """
+        Imprime las alertas de forma estructurada por zona y fecha.
+
+        Args:
+            lista_alertas (list): Lista de dicts con zona, fecha y alertas.
+        """
         print("\n" + "="*50)
         for item in lista_alertas:
             print(f"📍 ZONA: {item['zona']} | 📅 FECHA: {item['fecha']}")
@@ -826,7 +1256,12 @@ class InterfazPyClima:
         print("="*50)
 
     def _mostrar_alertas_hoy(self, lista_alertas):
-        """Muestra solo las alertas del día en curso"""
+        """
+        Muestra solo las alertas del día en curso.
+
+        Args:
+            lista_alertas (list): Lista de dicts con zona, fecha y alertas.
+        """
         fecha_hoy = datetime.now().strftime('%Y-%m-%d')
         alertas_hoy = [item for item in lista_alertas if item['fecha'] == fecha_hoy]
 
@@ -845,10 +1280,18 @@ class InterfazPyClima:
         print("="*50)
 
     def _filtrar_y_mostrar_alertas(self, alertas_encontradas, lista_tipos):
-        """Maneja el filtrado de alertas y lanza la navegación posterior"""
+        """
+        Muestra el submenú de tipos de alerta y filtra las alertas por el tipo seleccionado.
+
+        Args:
+            alertas_encontradas (list): Lista completa de alertas detectadas.
+            lista_tipos (list): Tipos de alerta disponibles para filtrar.
+
+        Returns:
+            str: "panel_alertas" o "menu_principal" según la navegación posterior.
+        """
         self._mostrar_encabezado("🚨 TIPOS DE ALERTA 🚨")
-        
-        # 1. Subimos el diccionario de palabras clave aquí arriba
+
         palabras_clave = {
             "Alerta de calor": ["calor", "temperatura elevada"],
             "Alerta de frío": ["frío", "helada", "frio"],
@@ -857,173 +1300,196 @@ class InterfazPyClima:
             "Alerta de lluvia": ["lluvia"]
         }
 
-        # 2. Imprimimos el menú calculando cuántas alertas hay de cada tipo
         for i, tipo in enumerate(lista_tipos, 1):
             claves = palabras_clave[tipo]
             contador = 0
-            # Contamos cuántas alertas coinciden con este tipo
             for item in alertas_encontradas:
                 for alerta in item['alertas']:
                     if any(clave in alerta.lower() for clave in claves):
                         contador += 1
-                        break # Si encuentra una, suma 1 y pasa a la siguiente zona
-            
-            # Mostramos la opción con el contador
+                        break
+
             print(f"   {i}. {tipo} ({contador} detectadas)")
-            
-        # --- AÑADIMOS LA OPCIÓN DE ESCAPE (Dinámica) ---
+
         opcion_volver = len(lista_tipos) + 1
         print(f"   {opcion_volver}. 🔙 Volver al panel de alertas")
-            
+
         try:
             entrada = input(f"\nSeleccione la alerta que desea investigar (1-{opcion_volver}) [o 'c' para cancelar]: ").strip()
-            
+
             if entrada.lower() == 'c':
                 return "panel_alertas"
-                
+
             seleccion = int(entrada)
-            
+
             if seleccion == opcion_volver:
                 return "panel_alertas"
-                
+
             elif 1 <= seleccion <= len(lista_tipos):
                 alerta_buscada = lista_tipos[seleccion - 1]
                 claves = palabras_clave[alerta_buscada]
-                
-                # 3. Filtramos la lista buscando las coincidencias
+
                 filtradas = []
                 for item in alertas_encontradas:
                     for alerta in item['alertas']:
                         if any(clave in alerta.lower() for clave in claves):
                             filtradas.append(item)
                             break
-                
+
                 print(f"\n📊 Resultados filtrados para: {alerta_buscada}")
                 self._imprimir_alertas(filtradas)
-                
+
                 return self._menu_post_alerta()
             else:
                 print("❌ Selección inválida.")
                 return "panel_alertas"
-                
+
         except ValueError:
             print("❌ Ingrese un número válido.")
             return "panel_alertas"
 
     def _menu_post_alerta(self):
-        """Submenú de navegación posterior exigido por el esquema"""
+        """
+        Submenú de navegación posterior al mostrar alertas.
+
+        Returns:
+            str: "panel_alertas" para volver al panel, "menu_principal" para salir.
+        """
         while True:
             self._mostrar_encabezado("OPCIONES POSTERIORES:")
             print("1. 🔙 Volver al panel de alertas")
             print("2. ⬅️  Volver al menú principal")
             print("3. 🚪 Salir del sistema")
-            
+
             post_opcion = input("¿Qué desea hacer ahora? (1-3): ").strip()
-            
+
             if post_opcion == "1":
-                return "panel_alertas" # Hace que el bucle padre vuelva a empezar
+                return "panel_alertas"
             elif post_opcion == "2":
-                return "menu_principal" # Avisa al bucle padre para que se rompa
+                return "menu_principal"
             elif post_opcion == "3":
                 self.salir()
                 exit()
             else:
                 print("❌ Opción no válida.")
-    
+
+    def ver_comparativa_manual_vs_api(self):
+        """
+        Muestra la tabla comparativa de temperaturas entre registros manuales y de API
+        para el mismo distrito y fecha, marcando discrepancias significativas.
+        """
+        self._mostrar_encabezado("🔄 COMPARATIVA MANUAL vs. API")
+        self.datos = self._cargar_datos()
+
+        if not self.datos:
+            print("❌ No hay datos registrados en el sistema.")
+            input("Presione Enter para volver...")
+            return
+
+        discrepancias = comparativa.detectar_discrepancias(self.datos)
+
+        if not discrepancias:
+            print("\nℹ️  No hay zonas con registros de ambas fuentes (manual + API) para comparar.")
+            print("    Registre datos de forma manual y también desde la API en el mismo distrito y fecha.")
+            input("\nPresione Enter para volver...")
+            return
+
+        comparativa.mostrar_tabla_comparativa(discrepancias)
+
+        conflictos = [d for d in discrepancias if d["conflicto"]]
+        if conflictos:
+            print(f"\n⚠️  Se encontraron {len(conflictos)} discrepancia(s) con diferencia ≥ 2°C.")
+            print("   Revisa los registros marcados como CONFLICTO para verificar la fuente más fiable.")
+
+        input("\nPresione Enter para volver al menú de análisis...")
+
+    def menu_scheduler(self):
+        """
+        Panel de control del scheduler de ingesta automática: iniciar, detener y configurar intervalo.
+        """
+        while True:
+            activo = sched_module.esta_activo()
+            intervalo = sched_module.obtener_intervalo()
+            proximo = sched_module.obtener_proximo_disparo()
+            resumen = sched_module.obtener_resumen()
+
+            self._mostrar_encabezado("⏱️ SCHEDULER DE INGESTA AUTOMÁTICA")
+
+            estado_txt = "🟢 ACTIVO" if activo else "🔴 DETENIDO"
+            print(f"\n  Estado:    {estado_txt}")
+            print(f"  Intervalo: cada {intervalo} minutos")
+            print(f"  Horario activo: {sched_module._hora_inicio}h – {sched_module._hora_fin}h")
+            if proximo:
+                print(f"  Próxima ejecución: {proximo.strftime('%H:%M:%S')}")
+
+            if resumen["ultima_ejecucion"]:
+                ue = resumen["ultima_ejecucion"].strftime("%Y-%m-%d %H:%M:%S")
+                print(f"\n  Último ciclo: {ue}")
+                print(f"  ✅ Guardados : {resumen['guardados']}")
+                print(f"  ⏭️  Omitidos  : {resumen['omitidos']}  (ya existían)")
+                print(f"  ❌ Errores   : {resumen['errores']}")
+                print(f"  🏙️  Distritos : {resumen['total_distritos']}")
+            else:
+                print("\n  (Sin ejecuciones registradas en esta sesión)")
+
+            print()
+            print("1. ▶️  Iniciar ingesta automática")
+            print("2. ⏹️  Detener ingesta automática")
+            print("3. ⚙️  Cambiar intervalo")
+            print("4. ⬅️  Volver al menú de análisis")
+            self._mostrar_separador()
+
+            opcion = input("Seleccione una opción (1-4): ").strip()
+
+            if opcion == "1":
+                if activo:
+                    print("⚠️  El scheduler ya está activo.")
+                else:
+                    try:
+                        entrada = input(f"Intervalo en minutos (5-120) [Enter para {intervalo}]: ").strip()
+                        mins = int(entrada) if entrada else intervalo
+                        sched_module.iniciar(mins)
+                        print(f"\n✅ Scheduler iniciado. Primera ingesta arrancando ahora.")
+                        print(f"   Siguiente ciclo en {sched_module.obtener_intervalo()} minutos.")
+                    except ValueError:
+                        print("❌ Introduce un número válido.")
+                input("\nPresione Enter para continuar...")
+
+            elif opcion == "2":
+                if not activo:
+                    print("⚠️  El scheduler ya está detenido.")
+                else:
+                    sched_module.detener()
+                    print("✅ Scheduler detenido. La ingesta automática se ha pausado.")
+                input("\nPresione Enter para continuar...")
+
+            elif opcion == "3":
+                try:
+                    entrada = input(f"Nuevo intervalo en minutos (5-120) [actual: {intervalo}]: ").strip()
+                    if entrada:
+                        mins = int(entrada)
+                        if activo:
+                            sched_module.iniciar(mins)
+                            print(f"✅ Intervalo cambiado a {sched_module.obtener_intervalo()} min (scheduler reiniciado).")
+                        else:
+                            sched_module.configurar_intervalo(mins)
+                            print(f"✅ Intervalo configurado a {sched_module.obtener_intervalo()} min para el próximo inicio.")
+                except ValueError:
+                    print("❌ Introduce un número válido.")
+                input("\nPresione Enter para continuar...")
+
+            elif opcion == "4":
+                break
+            else:
+                print("❌ Opción no válida.")
+
     def salir(self):
+        """
+        Detiene el scheduler si está activo y muestra el mensaje de cierre del sistema.
+        """
+        if sched_module.esta_activo():
+            sched_module.detener()
         self._mostrar_encabezado("🚪 CERRANDO SISTEMA")
         print("\n✅ Todos los datos han sido guardados correctamente")
-        print("🌍 ¡Gracias por usar PyClima Resiliente!")
+        print("🌍 ¡Gracias por usar The Big Data Theory!")
         print("👋 ¡Hasta pronto!\n")
-
-    def obtener_datos_api(self):
-        """
-        Obtiene datos climáticos desde WeatherAPI y los muestra 
-        antes de guardar (opción de confirmación).
-        
-        Flujo:
-        1. Muestra lista de distritos de Madrid
-        2. Usuario selecciona uno
-        3. Consulta WeatherAPI
-        4. Muestra datos en pantalla
-        5. Pregunta: ¿Guardar? (s/n)
-        """
-        import Api  # Importamos el módulo de API
-    
-        self._mostrar_encabezado("📡 OBTENER DATOS DESDE API METEOROLÓGICA")
-        
-        # PASO 1: Obtener lista de distritos
-        distritos = persistencia.obtener_distritos_permitidos()
-        if not distritos:
-            print("❌ No se encontraron distritos configurados en config.json")
-            input("Presione Enter para volver...")
-            return
-        
-        # PASO 2: Mostrar lista y pedir selección
-        print("\n📍 Distritos disponibles:")
-        for i, distrito in enumerate(distritos, 1):
-            print(f"   {i}. {distrito}")
-        
-        try:
-            seleccion = int(input("\nSeleccione un distrito (número): ")) - 1
-            if not (0 <= seleccion < len(distritos)):
-                print("❌ Selección inválida")
-                return
-            
-            distrito_seleccionado = distritos[seleccion]
-        except ValueError:
-            print("❌ Ingrese un número válido")
-            return
-        
-        # PASO 3: Traer datos de la API
-        print(f"\n⏳ Consultando WeatherAPI para {distrito_seleccionado}...")
-        try:
-            registro_api = Api.obtener_registro_climatico(
-                ciudad=distrito_seleccionado,
-                usuario_actual=self.usuario_actual
-            )
-        except Exception as error:
-            print(f"❌ Error al consultar la API: {error}")
-            input("Presione Enter para volver...")
-            return
-        
-        # PASO 4: Mostrar datos en pantalla
-        print("\n" + "="*50)
-        print("✅ DATOS OBTENIDOS DE WEATHERAPI")
-        print("="*50)
-        print(f"📍 Distrito: {registro_api['distrito']}")
-        print(f"📅 Fecha: {registro_api['fecha']}")
-        print(f"🌡️  Temperatura: {registro_api['temperatura']}°C")
-        print(f"💧 Humedad: {registro_api['humedad']}%")
-        print(f"💨 Viento: {registro_api['viento']} km/h")
-        print(f"🌧️  Lluvia: {registro_api['lluvia']} mm")
-        print(f"🌤️  Condición: {registro_api['condicion']}")
-        
-        # Mostrar alertas si hay
-        if registro_api['alertas']:
-            print("\n🚨 ALERTAS DETECTADAS:")
-            for alerta in registro_api['alertas']:
-                print(f"   {alerta}")
-        else:
-            print("\n✅ No hay alertas")
-        
-        print("="*50)
-        
-        # PASO 5: Pedir confirmación
-        confirmacion = input("\n¿Desea guardar estos datos? (s/n): ").strip().lower()
-        
-        if confirmacion == 's':
-            # PASO 6: Guardar en JSON
-            try:
-                exito = persistencia.registrar_nuevo_dato(registro_api)
-                if exito:
-                    print("✅ ¡Datos guardados exitosamente!")
-                    self.datos = self._cargar_datos()  # Refrescar datos
-                else:
-                    print("❌ No se pudieron guardar los datos")
-            except Exception as error:
-                print(f"❌ Error al guardar: {error}")
-        else:
-            print("❌ Operación cancelada. Los datos no se guardaron.")
-        
-        input("\nPresione Enter para volver al menú principal...")

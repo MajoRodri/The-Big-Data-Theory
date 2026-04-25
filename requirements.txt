@@ -21,4 +21,5 @@ seaborn==0.13.2
 six==1.17.0
 tabulate==0.10.0
 tzdata==2026.1
-requests==2.31.0
+apscheduler==3.10.4
+schedule==1.2.0

@@ -1,3 +1,8 @@
+"""
+Módulo de persistencia para The Big Data Theory.
+Gestiona la lectura y escritura de datos climáticos en archivos JSON.
+"""
+
 import json
 import logging
 import os
@@ -15,7 +20,13 @@ CONFIRMACION_REQUERIDA = "si"
 logger = logging.getLogger(__name__)
 
 
-def obtener_distritos_permitidos():    #Función para obtener la lista de distritos oficiales desde el archivo de configuración
+def obtener_distritos_permitidos():
+    """
+    Obtiene la lista de distritos oficiales desde el archivo de configuración.
+
+    Returns:
+        list: Lista de nombres de distritos. Lista vacía si no existe el archivo.
+    """
     if not os.path.exists(CONFIGURACION_DE_ARCHIVO):
         print(f"Alerta: No se encontro {CONFIGURACION_DE_ARCHIVO}. Se desactivo la validacion territorial.")
         return []
@@ -27,7 +38,13 @@ def obtener_distritos_permitidos():    #Función para obtener la lista de distri
         return []
 
 
-def obtener_umbrales_alerta():  #Función para obtener los umbrales de alerta desde el archivo de configuración
+def obtener_umbrales_alerta():
+    """
+    Obtiene los umbrales de alerta climática desde el archivo de configuración.
+
+    Returns:
+        dict: Diccionario con los valores de umbral. Vacío si no existe el archivo.
+    """
     if not os.path.exists(CONFIGURACION_DE_ARCHIVO):
         print(f"Alerta: No se encontro {CONFIGURACION_DE_ARCHIVO}. Sistema sin umbrales.")
         return {}
@@ -35,14 +52,19 @@ def obtener_umbrales_alerta():  #Función para obtener los umbrales de alerta de
     try:
         with open(CONFIGURACION_DE_ARCHIVO, "r", encoding="utf-8") as archivo:
             configuracion = json.load(archivo)
-            umbrales = configuracion.get("umbrales", {})
-            return umbrales
+            return configuracion.get("umbrales", {})
     except Exception:
         print(f"Error al leer umbrales de {CONFIGURACION_DE_ARCHIVO}.")
         return {}
 
 
-def leer_historico():    #Función para leer el histórico de datos desde el archivo JSON, con manejo de errores
+def leer_historico():
+    """
+    Lee el histórico de datos climáticos desde el archivo JSON.
+
+    Returns:
+        list: Lista de registros climáticos. Lista vacía si el archivo no existe o está corrupto.
+    """
     if not os.path.exists(ARCHIVO_JSON):
         print(f"Alerta: No se encontro {ARCHIVO_JSON}.")
         return []
@@ -61,7 +83,16 @@ def leer_historico():    #Función para leer el histórico de datos desde el arc
         return []
 
 
-def registrar_nuevo_dato(nuevo_registro):  #Función para registrar un nuevo dato, con validación de distrito, verificación de duplicados y confirmación del usuario
+def registrar_nuevo_dato(nuevo_registro):
+    """
+    Registra un nuevo dato climático con validación de distrito, deduplicación y confirmación.
+
+    Args:
+        nuevo_registro (dict): Registro climático a guardar.
+
+    Returns:
+        bool: True si el registro fue guardado, False si fue rechazado o cancelado.
+    """
     distritos_oficiales = obtener_distritos_permitidos()
     distrito_ingresado = nuevo_registro["distrito"].strip()
     mapa_distritos = {distrito.lower(): distrito for distrito in distritos_oficiales}
@@ -104,7 +135,16 @@ def registrar_nuevo_dato(nuevo_registro):  #Función para registrar un nuevo dat
         print("No te he entendido. Escribe solo 's' o 'n'.\n")
 
 
-def actualizar_base_de_datos(historico_modificado):  #Función para actualizar la base de datos con un histórico modificado, con manejo de errores
+def actualizar_base_de_datos(historico_modificado):
+    """
+    Sobreescribe el archivo JSON con el histórico modificado en memoria.
+
+    Args:
+        historico_modificado (list): Lista completa de registros climáticos actualizada.
+
+    Returns:
+        bool: True si la escritura fue exitosa.
+    """
     try:
         with open(ARCHIVO_JSON, "w", encoding="utf-8") as archivo:
             json.dump(historico_modificado, archivo, indent=4, ensure_ascii=False)
@@ -114,7 +154,10 @@ def actualizar_base_de_datos(historico_modificado):  #Función para actualizar l
         return False
 
 
-def inicializar_archivo_datos():   #Función para inicializar el archivo de datos si no existe, con manejo de errores
+def inicializar_archivo_datos():
+    """
+    Crea el archivo de datos vacío si no existe, para el primer arranque del sistema.
+    """
     if not os.path.exists(ARCHIVO_JSON):
         print(f"Inicializando sistema: Creando nueva base de datos ({ARCHIVO_JSON})...")
         try:
@@ -124,3 +167,49 @@ def inicializar_archivo_datos():   #Función para inicializar el archivo de dato
         except Exception as error:
             print(f"Error critico al crear la base de datos: {error}")
             logger.error("Error critico al crear %s: %s", ARCHIVO_JSON, error)
+
+
+def actualizar_umbrales_alerta(nuevos_umbrales):
+    """
+    Actualiza los umbrales de alerta en config.json manteniendo compatibilidad con ambos esquemas
+    de claves: temperatura_max/temperatura_min (nuevo) y temp_max_roja/temp_min_critica (antiguo).
+
+    Args:
+        nuevos_umbrales (dict): Diccionario con los nuevos valores de umbral.
+
+    Returns:
+        bool: True si la actualización fue exitosa.
+    """
+    try:
+        if os.path.exists(CONFIGURACION_DE_ARCHIVO):
+            with open(CONFIGURACION_DE_ARCHIVO, "r", encoding="utf-8") as archivo:
+                configuracion = json.load(archivo)
+        else:
+            configuracion = {}
+
+        umbrales_base = configuracion.get("umbrales", {}).copy()
+        umbrales_base.update(nuevos_umbrales)
+
+        # Mantiene sincronizados los nombres del esquema antiguo cuando se actualizan los del nuevo
+        if "temperatura_max" in nuevos_umbrales:
+            umbrales_base["temp_max_roja"] = nuevos_umbrales["temperatura_max"]
+            umbrales_base["temp_max_naranja"] = round(nuevos_umbrales["temperatura_max"] - 5.0, 1)
+        if "temperatura_min" in nuevos_umbrales:
+            umbrales_base["temp_min_critica"] = nuevos_umbrales["temperatura_min"]
+            umbrales_base["temp_min_alerta"] = round(nuevos_umbrales["temperatura_min"] + 5.0, 1)
+        if "lluvia_max" in nuevos_umbrales:
+            umbrales_base["lluvia_roja"] = nuevos_umbrales["lluvia_max"]
+            umbrales_base["lluvia_naranja"] = round(nuevos_umbrales["lluvia_max"] * 0.4, 1)
+
+        configuracion["umbrales"] = umbrales_base
+
+        with open(CONFIGURACION_DE_ARCHIVO, "w", encoding="utf-8") as archivo:
+            json.dump(configuracion, archivo, indent=4, ensure_ascii=False)
+
+        logger.info("Umbrales de alerta actualizados correctamente")
+        return True
+
+    except Exception as error:
+        print(f"Error al actualizar umbrales de alerta: {error}")
+        logger.error("Error al actualizar umbrales: %s", error)
+        return False
