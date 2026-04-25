@@ -34,6 +34,39 @@ _ultimo_resumen = {
     "total_distritos": 0,
 }
 
+_errores_recientes = []
+
+_SUGERENCIAS_ERROR = {
+    401: "Revisar la API Key en el archivo .env",
+    403: "Verificar los permisos del plan API contratado",
+    404: "Verificar el nombre del distrito en config.json",
+    429: "Límite de peticiones alcanzado – esperar o actualizar el plan API",
+    "TIMEOUT": "Tiempo de espera agotado – revisar conectividad de red",
+    "CONN_ERROR": "Error de conexión – revisar red, firewall o proxy",
+}
+
+
+def _obtener_sugerencia(codigo):
+    if codigo in _SUGERENCIAS_ERROR:
+        return _SUGERENCIAS_ERROR[codigo]
+    if isinstance(codigo, int) and codigo >= 500:
+        return "Error del servidor WeatherAPI – intentar más tarde"
+    return "Error desconocido – revisar logs del sistema (app.log)"
+
+
+def _registrar_error_reciente(distrito, codigo, mensaje, sugerencia):
+    global _errores_recientes
+    entrada = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "distrito": distrito,
+        "codigo": codigo if codigo is not None else "N/A",
+        "mensaje": mensaje,
+        "sugerencia": sugerencia,
+    }
+    _errores_recientes.insert(0, entrada)
+    if len(_errores_recientes) > 20:
+        _errores_recientes.pop()
+
 
 # ─── Lógica del job ───────────────────────────────────────────────────────────
 
@@ -73,6 +106,11 @@ def _tarea_ingesta():
             registro = Api.obtener_registro_climatico(distrito)
             if not registro:
                 errores += 1
+                err = Api._ultimo_error.copy()
+                codigo = err.get("codigo")
+                mensaje = err.get("mensaje", "Sin respuesta de la API")
+                sugerencia = _obtener_sugerencia(codigo)
+                _registrar_error_reciente(distrito, codigo, mensaje, sugerencia)
                 continue
 
             with _lock:
@@ -100,6 +138,7 @@ def _tarea_ingesta():
         except Exception as e:
             errores += 1
             logger.error("Scheduler: ❌ Error en %s: %s", distrito, e)
+            _registrar_error_reciente(distrito, None, str(e)[:100], "Revisar logs del sistema (app.log)")
 
     _ultimo_resumen = {
         "ultima_ejecucion": datetime.now(),
@@ -203,3 +242,13 @@ def obtener_resumen():
         dict: Diccionario con ultima_ejecucion, guardados, omitidos, errores y total_distritos.
     """
     return _ultimo_resumen.copy()
+
+
+def obtener_errores_recientes():
+    """
+    Devuelve la lista de los errores de conexión más recientes del scheduler.
+
+    Returns:
+        list: Lista de dicts con timestamp, distrito, codigo, mensaje y sugerencia.
+    """
+    return list(_errores_recientes)

@@ -25,6 +25,8 @@ WEATHERAPI_REINTENTOS = int(os.getenv("WEATHERAPI_REINTENTOS", "3"))
 
 logger = logging.getLogger(__name__)
 
+_ultimo_error = {"codigo": None, "mensaje": "", "ciudad": ""}
+
 
 def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
     """
@@ -75,6 +77,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
                     f"🔴 WeatherAPI AUTH ERROR | Status: 401 | "
                     f"API key inválida o expirada"
                 )
+                _ultimo_error.update({"codigo": 401, "mensaje": "API key inválida o expirada", "ciudad": ciudad})
                 return None, None
 
             if response.status_code == 403:
@@ -82,6 +85,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
                     f"🔴 WeatherAPI FORBIDDEN | Status: 403 | "
                     f"Acceso denegado al endpoint"
                 )
+                _ultimo_error.update({"codigo": 403, "mensaje": "Acceso denegado al endpoint", "ciudad": ciudad})
                 return None, None
 
             if response.status_code == 404:
@@ -89,6 +93,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
                     f"🟡 WeatherAPI NOT FOUND | Status: 404 | "
                     f"Ciudad '{ciudad}' no encontrada"
                 )
+                _ultimo_error.update({"codigo": 404, "mensaje": f"Ciudad '{ciudad}' no encontrada", "ciudad": ciudad})
                 return None, None
 
             if response.status_code == 429:
@@ -97,6 +102,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
                     f"⏸️ WeatherAPI RATE LIMIT | Status: 429 | "
                     f"Intento {intento}/{WEATHERAPI_REINTENTOS} | Esperando {delay}s..."
                 )
+                _ultimo_error.update({"codigo": 429, "mensaje": "Límite de peticiones alcanzado", "ciudad": ciudad})
                 time.sleep(delay)
                 continue
 
@@ -106,6 +112,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
                     f"⚠️ WeatherAPI SERVER ERROR | Status: {response.status_code} | "
                     f"Intento {intento}/{WEATHERAPI_REINTENTOS} | Esperando {delay}s..."
                 )
+                _ultimo_error.update({"codigo": response.status_code, "mensaje": "Error del servidor WeatherAPI", "ciudad": ciudad})
                 time.sleep(delay)
                 continue
 
@@ -113,6 +120,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
                 f"❌ WeatherAPI ERROR | Status: {response.status_code} | "
                 f"Respuesta: {response.text[:200]}"
             )
+            _ultimo_error.update({"codigo": response.status_code, "mensaje": f"Error HTTP {response.status_code}", "ciudad": ciudad})
             return None, None
 
         except requests.Timeout:
@@ -121,6 +129,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
                 f"⏸️ WeatherAPI TIMEOUT | Intento {intento}/{WEATHERAPI_REINTENTOS} | "
                 f"Servidor tardó más de {WEATHERAPI_TIMEOUT}s | Esperando {delay}s..."
             )
+            _ultimo_error.update({"codigo": "TIMEOUT", "mensaje": "Tiempo de espera agotado", "ciudad": ciudad})
             if intento < WEATHERAPI_REINTENTOS:
                 time.sleep(delay)
             continue
@@ -131,6 +140,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
                 f"⏸️ WeatherAPI CONNECTION ERROR | Intento {intento}/{WEATHERAPI_REINTENTOS} | "
                 f"Error: {str(error)[:100]} | Esperando {delay}s..."
             )
+            _ultimo_error.update({"codigo": "CONN_ERROR", "mensaje": "Error de conexión de red", "ciudad": ciudad})
             if intento < WEATHERAPI_REINTENTOS:
                 time.sleep(delay)
             continue
@@ -139,6 +149,7 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
             logger.error(
                 f"❌ WeatherAPI UNEXPECTED ERROR | {type(error).__name__}: {error}"
             )
+            _ultimo_error.update({"codigo": "ERROR", "mensaje": str(error)[:100], "ciudad": ciudad})
             return None, None
 
     logger.error(

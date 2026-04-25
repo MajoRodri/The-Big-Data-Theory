@@ -360,5 +360,38 @@
         "latencia_ms": 56,
         "timestamp": "2026-04-24T20:58:40.766994Z",
         "condicion": "Lluvia  moderada a intervalos"
+    },
+    {
+        "fecha": "2026-04-25",
+        "distrito": "Villaverde",
+        "fuente": "manual",
+        "temperatura": 23.0,
+        "temp": 23.0,
+        "humedad": 44.0,
+        "viento": 22.0,
+        "lluvia": 0.0,
+        "alertas": [],
+        "registrado_por": "100375",
+        "editado": false
+    },
+    {
+        "fecha": "2026-04-25",
+        "hora": "16:39:05",
+        "distrito": "Villaverde",
+        "fuente": "api",
+        "proveedor_api": "weatherapi",
+        "temperatura": 23.2,
+        "temp": 23.2,
+        "humedad": 47.0,
+        "viento": 9.0,
+        "lluvia": 0.0,
+        "presion": 1016.0,
+        "descripcion": "Parcialmente nublado",
+        "alertas": [],
+        "registrado_por": "100375",
+        "editado": false,
+        "latencia_ms": 204,
+        "timestamp": "2026-04-25T14:39:05.417015Z",
+        "condicion": "Parcialmente nublado"
     }
 ]

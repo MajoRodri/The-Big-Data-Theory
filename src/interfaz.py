@@ -54,21 +54,27 @@ class InterfazTBDT:
                 zonas.add(reg["distrito"])
         return sorted(list(zonas)) if zonas else []
 
-    def _validar_duplicado(self, fecha, distrito):
+    def _validar_duplicado(self, fecha, distrito, fuente="manual"):
         """
-        Verifica si ya existe un registro con la misma fecha y distrito.
+        Verifica si ya existe un registro con la misma fecha, distrito y fuente.
+        Permite un máximo de dos registros por clave (uno manual + uno API).
 
         Args:
             fecha (str): Fecha en formato AAAA-MM-DD.
             distrito (str): Nombre del distrito.
+            fuente (str): Fuente del registro a añadir ("manual" o "api").
 
         Returns:
-            bool: True si ya existe un duplicado.
+            bool: True si el registro debe ser bloqueado (ya existe misma fuente o hay 2 registros).
         """
-        for reg in self.datos:
-            if reg.get("fecha") == str(fecha) and reg.get("distrito", "").lower() == distrito.lower():
-                return True
-        return False
+        registros = [
+            r for r in self.datos
+            if r.get("fecha") == str(fecha)
+            and r.get("distrito", "").lower() == distrito.lower()
+        ]
+        if len(registros) >= 2:
+            return True
+        return any(r.get("fuente", "manual") == fuente for r in registros)
 
     def _analizar_alertas(self, temperatura, humedad, viento, lluvia=0):
         """
@@ -191,8 +197,8 @@ class InterfazTBDT:
                 if not distrito:
                     return
 
-                if self._validar_duplicado(fecha, distrito):
-                    print(f"⚠️  Ya existe un registro para {distrito} en {fecha}. No se aceptan duplicados.")
+                if self._validar_duplicado(fecha, distrito, fuente="manual"):
+                    print(f"⚠️  Ya existe un registro manual para {distrito} en {fecha}.")
                     if input("¿Desea ingresar datos nuevamente? (s/n): ").lower() != 's':
                         return
                     continue
@@ -228,6 +234,7 @@ class InterfazTBDT:
                 nuevo_registro = {
                     "fecha": fecha,
                     "distrito": distrito,
+                    "fuente": "manual",
                     "temperatura": temperatura,
                     "temp": temperatura,
                     "humedad": humedad,
@@ -273,8 +280,8 @@ class InterfazTBDT:
                 if not distrito:
                     return
 
-                if self._validar_duplicado(fecha, distrito):
-                    print(f"⚠️  Ya existe un registro para {distrito} en {fecha}. No se aceptan duplicados.")
+                if self._validar_duplicado(fecha, distrito, fuente="api"):
+                    print(f"⚠️  Ya existe un registro de API para {distrito} en {fecha}.")
                     if input("¿Desea intentarlo de nuevo? (s/n): ").strip().lower() != "s":
                         return
                     continue
@@ -497,62 +504,77 @@ class InterfazTBDT:
 
     def _menu_consultar_usuario(self):
         """
-        Busca registros por operario mostrando el directorio de empleados con datos registrados,
-        y permite editar los registros propios.
+        Muestra todos los usuarios registrados en el sistema. Cualquier operario puede
+        consultar los registros de otro, pero solo el dueño puede editarlos.
         """
         print("\n👤 BÚSQUEDA POR OPERARIO")
 
-        operarios_ids = set()
-        for reg in self.datos:
-            if "registrado_por" in reg:
-                operarios_ids.add(reg["registrado_por"])
+        todos_usuarios = auth.cargar_datos(persistencia.ARCHIVO_USUARIOS)
 
-        lista_operarios = list(operarios_ids)
-
-        if not lista_operarios:
-            print("❌ No hay registros asociados a ningún operario.")
+        if not todos_usuarios:
+            print("❌ No hay usuarios registrados en el sistema.")
             return
 
-        print("\n📋 Directorio de operarios con registros:")
-        for i, op_id in enumerate(lista_operarios, 1):
-            nombre_completo = auth.obtener_nombre_operario(op_id)
+        print("\n📋 Directorio de operarios:")
+        for i, u in enumerate(todos_usuarios, 1):
+            op_id = u.get("num_empleado", "")
+            nombre_display = f"{u.get('nombre', '')} {u.get('apellidos', '')}".strip()
 
             if self.usuario_actual and op_id == self.usuario_actual.get("num_empleado"):
-                print(f"   {i}. {nombre_completo}  ⬅️  (ESTE ERES TÚ)")
+                print(f"   {i}. {nombre_display}  (ID: {op_id})  ⬅️  (ESTE ERES TÚ)")
             else:
-                print(f"   {i}. {nombre_completo}")
+                print(f"   {i}. {nombre_display}")
 
         try:
             seleccion = int(input("\nSeleccione un operario (número): ")) - 1
-            if 0 <= seleccion < len(lista_operarios):
-                op_seleccionado = lista_operarios[seleccion]
-                nombre_seleccionado = auth.obtener_nombre_operario(op_seleccionado)
+            if not (0 <= seleccion < len(todos_usuarios)):
+                print("❌ Selección inválida")
+                return
 
-                print(f"\n📊 Datos registrados por: {nombre_seleccionado}")
-                self._mostrar_separador()
+            usuario_sel = todos_usuarios[seleccion]
+            op_seleccionado = usuario_sel.get("num_empleado", "")
+            nombre_seleccionado = f"{usuario_sel.get('nombre', '')} {usuario_sel.get('apellidos', '')}".strip()
 
-                encontrados = 0
-                registros_operario = []
-                for indice, reg in enumerate(self.datos):
-                    if reg.get("registrado_por") == op_seleccionado:
-                        encontrados += 1
-                        registros_operario.append((indice, reg))
-                        temp = reg.get('temp', reg.get('temperatura', 0))
-                        estado_edicion = " | 🔒 Ya editado" if reg.get("editado") else " | ✏️ Editable"
-                        print(f"{encontrados}. 📅 {reg.get('fecha')} | 📍 {reg.get('distrito', 'Desconocida')}{estado_edicion}")
-                        print(f"   🌡️  T: {temp}°C | 💧 H: {reg.get('humedad', 0)}% | 💨 V: {reg.get('viento', 0)} km/h")
-                        print("-" * 30)
+            print(f"\n📊 Datos registrados por: {nombre_seleccionado}")
+            self._mostrar_separador()
 
-                print(f"✅ Total de registros de este operario: {encontrados}")
+            encontrados = 0
+            registros_operario = []
+            for indice, reg in enumerate(self.datos):
+                if reg.get("registrado_por") == op_seleccionado:
+                    encontrados += 1
+                    registros_operario.append((indice, reg))
+                    temp = reg.get('temp', reg.get('temperatura', 0))
+                    fuente_reg = reg.get("fuente", "manual")
+                    if fuente_reg == "api":
+                        estado_edicion = " | 🤖 API (no editable)"
+                    elif reg.get("editado"):
+                        estado_edicion = " | 🔒 Ya editado"
+                    else:
+                        estado_edicion = " | ✏️ Editable"
+                    print(f"{encontrados}. 📅 {reg.get('fecha')} | 📍 {reg.get('distrito', 'Desconocida')}{estado_edicion}")
+                    print(f"   🌡️  T: {temp}°C | 💧 H: {reg.get('humedad', 0)}% | 💨 V: {reg.get('viento', 0)} km/h")
+                    print("-" * 30)
 
-                if self.usuario_actual and op_seleccionado == self.usuario_actual.get("num_empleado") and registros_operario:
+            if encontrados == 0:
+                print("ℹ️ Este operario no tiene registros en el sistema.")
+            else:
+                print(f"✅ Total de registros: {encontrados}")
+
+            if self.usuario_actual and op_seleccionado == self.usuario_actual.get("num_empleado") and registros_operario:
+                hay_editables = any(
+                    r.get("fuente", "manual") != "api" and not r.get("editado")
+                    for _, r in registros_operario
+                )
+                if hay_editables:
                     editar = input("\n¿Desea editar uno de sus registros? (s/n): ").strip().lower()
                     if editar == "s":
                         self._editar_registro_usuario(registros_operario)
-                elif self.usuario_actual and op_seleccionado != self.usuario_actual.get("num_empleado"):
-                    print("ℹ️ Solo el usuario que registró los datos puede editarlos.")
-            else:
-                print("❌ Selección inválida")
+                else:
+                    print("\nℹ️ No tiene registros manuales editables.")
+            elif self.usuario_actual and op_seleccionado != self.usuario_actual.get("num_empleado"):
+                print("ℹ️ Solo el usuario que registró los datos puede editarlos.")
+
         except ValueError:
             print("❌ Ingrese un número válido")
 
@@ -577,6 +599,10 @@ class InterfazTBDT:
 
             if not self.usuario_actual or registro.get("registrado_por") != self.usuario_actual.get("num_empleado"):
                 print("❌ Solo puedes editar registros creados por tu propio usuario.")
+                return
+
+            if registro.get("fuente", "manual") == "api":
+                print("❌ Los registros obtenidos desde la API no pueden editarse.")
                 return
 
             if registro.get("editado"):
@@ -608,12 +634,18 @@ class InterfazTBDT:
             viento_final = self._pedir_numero_editable("Nuevo viento", viento_actual, 0, 150)
             lluvia_final = self._pedir_numero_editable("Nueva lluvia", lluvia_actual, 0)
 
-            for i, reg in enumerate(self.datos):
-                if (i != indice_real
-                        and reg.get("fecha") == registro.get("fecha")
-                        and reg.get("distrito", "").lower() == distrito_final.lower()):
-                    print("❌ No se puede guardar la edición porque crearía un registro duplicado.")
-                    return
+            registros_misma_clave = [
+                r for i, r in enumerate(self.datos)
+                if i != indice_real
+                and r.get("fecha") == registro.get("fecha")
+                and r.get("distrito", "").lower() == distrito_final.lower()
+            ]
+            if len(registros_misma_clave) >= 2:
+                print("❌ No se puede guardar la edición: ya existen 2 registros para esa fecha y distrito.")
+                return
+            if any(r.get("fuente", "manual") == "manual" for r in registros_misma_clave):
+                print("❌ No se puede guardar la edición porque crearía un registro manual duplicado.")
+                return
 
             umbrales = persistencia.obtener_umbrales_alerta()
             datos_registro = {
@@ -675,7 +707,7 @@ class InterfazTBDT:
         Muestra el histórico completo con autoría detallada y opciones de filtrado y gráficas.
         """
         while True:
-            self._mostrar_encabezado("📈 HISTÓRICO COMPLETO DE TODAS LAS ZONAS")
+            self._mostrar_encabezado("📈 HISTÓRICO COMPLETO DE TODOS LOS DISTRITOS")
             self.datos = self._cargar_datos()
 
             if not self.datos:
@@ -725,21 +757,17 @@ class InterfazTBDT:
             print(f"{'='*50}")
 
             self._mostrar_encabezado("OPCIONES DE HISTÓRICO:")
-            print("1. 🔍 Aplicar filtros de búsqueda (Zona / Fecha / Usuario)")
-            print("2. 📊 Generar gráfica general")
-            print("3. ⬅️  Volver al menú principal")
+            print("1. 📊 Generar gráfica general")
+            print("2. ⬅️  Volver al menú principal")
 
-            opcion = input("¿Qué desea hacer ahora? (1-3): ").strip()
+            opcion = input("¿Qué desea hacer ahora? (1-2): ").strip()
 
             if opcion == "1":
-                self.consultar_datos()
-                break
-            elif opcion == "2":
                 self.generar_reporte_historico_visual()
-            elif opcion == "3":
+            elif opcion == "2":
                 break
             else:
-                print("❌ Opción no válida. Por favor, seleccione 1, 2 o 3.")
+                print("❌ Opción no válida. Por favor, seleccione 1 o 2.")
                 input("Presione Enter para intentarlo de nuevo...")
 
     def mostrar_panel_alertas(self):
@@ -890,8 +918,8 @@ class InterfazTBDT:
             self._mostrar_encabezado("THE BIG DATA THEORY v2.0")
             print("1. 📋 Registrar Datos Climáticos")
             print("2. 📡 Obtener Datos desde API")
-            print("3. 🔍 Consultar Datos")
-            print("4. 📚 Ver Histórico (Todas las Zonas)")
+            print("3. 🔍 Consultar Datos Guardados")
+            print("4. 📚 Ver Histórico (Todos los Distritos)")
             print("5. 📢 Alertas Activas")
             print("6. 📊 Análisis Avanzado")
             print("7. 🔙 Salir")
@@ -928,32 +956,29 @@ class InterfazTBDT:
 
             self._mostrar_encabezado("📊 ANÁLISIS AVANZADO")
             print("1. 📤 Exportar Datos (CSV)")
-            print("2. ⚙️  Configurar Umbrales de Alerta")
-            print("3. 📈 Ver Métricas del Sistema")
-            print("4. 📋 Generar Reporte Automático")
-            print("5. 💾 Backup de Datos")
-            print("6. 🔄 Comparativa Manual vs. API")
-            print(f"7. ⏱️  Scheduler de Ingesta Automática  [{estado_sched}]")
-            print("8. ⬅️  Volver al menú principal")
+            print("2. 📊 Estadísticas Generales")
+            print("3. 📋 Generar Reporte Automático")
+            print("4. 💾 Backup de Datos")
+            print("5. 🔄 Comparativa Manual vs. API")
+            print(f"6. ⏱️  Scheduler de Ingesta Automática  [{estado_sched}]")
+            print("7. ⬅️  Volver al menú principal")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-8): ").strip()
+            opcion = input("Seleccione una opción (1-7): ").strip()
 
             if opcion == "1":
                 self.exportar_datos_csv()
             elif opcion == "2":
-                self.configurar_umbrales_alerta()
-            elif opcion == "3":
                 self.ver_metricas_sistema()
-            elif opcion == "4":
+            elif opcion == "3":
                 self.generar_reporte_automatico()
-            elif opcion == "5":
+            elif opcion == "4":
                 self.backup_datos()
-            elif opcion == "6":
+            elif opcion == "5":
                 self.ver_comparativa_manual_vs_api()
-            elif opcion == "7":
+            elif opcion == "6":
                 self.menu_scheduler()
-            elif opcion == "8":
+            elif opcion == "7":
                 break
             else:
                 print("❌ Opción no válida.")
@@ -1436,10 +1461,11 @@ class InterfazTBDT:
             print("1. ▶️  Iniciar ingesta automática")
             print("2. ⏹️  Detener ingesta automática")
             print("3. ⚙️  Cambiar intervalo")
-            print("4. ⬅️  Volver al menú de análisis")
+            print("4. 🔍 Ver detalle de errores")
+            print("5. ⬅️  Volver al menú de análisis")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-4): ").strip()
+            opcion = input("Seleccione una opción (1-5): ").strip()
 
             if opcion == "1":
                 if activo:
@@ -1479,9 +1505,32 @@ class InterfazTBDT:
                 input("\nPresione Enter para continuar...")
 
             elif opcion == "4":
+                self._ver_detalle_errores_scheduler()
+
+            elif opcion == "5":
                 break
             else:
                 print("❌ Opción no válida.")
+
+    def _ver_detalle_errores_scheduler(self):
+        """
+        Muestra los errores de conexión recientes del scheduler con sugerencias de solución.
+        """
+        self._mostrar_encabezado("🔍 DETALLE DE ERRORES RECIENTES")
+        errores = sched_module.obtener_errores_recientes()
+
+        if not errores:
+            print("\n✅ No hay errores recientes registrados.")
+            print("   (Los errores se registran durante la ingesta automática)")
+        else:
+            print(f"\n⚠️  {len(errores)} error(es) reciente(s):\n")
+            for i, err in enumerate(errores, 1):
+                print(f"  {i}. [{err['timestamp']}]  Distrito: {err['distrito']}")
+                print(f"     🔴 Código: {err['codigo']}  —  {err['mensaje']}")
+                print(f"     💡 Sugerencia: {err['sugerencia']}")
+                print()
+
+        input("Presione Enter para volver al scheduler...")
 
     def salir(self):
         """
