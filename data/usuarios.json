@@ -6,51 +6,10 @@
         "password_hash": "pbkdf2_sha256$200000$kiioGZkLx/LIsLEo+6g8Fg==$tu0cPBfcKM9I7C/52qjRQHoOLqQHgd3lcEmL2WJEQ/w="
     },
     {
-        "nombre": "Mariajose",
-        "apellidos": "Alvarez",
-        "num_empleado": "850369",
-        "password_hash": "pbkdf2_sha256$200000$Brc+XdeZDXi5J7TlVkqqZQ==$/ESFeqSTmxPtnNK6Gez4VpRvIXsjvNqFBIGXISr6F2A="
-    },
-    {
-        "nombre": "Maria Isabel",
-        "apellidos": "Durango",
-        "num_empleado": "036939",
-        "password_hash": "pbkdf2_sha256$200000$j+DgITU7afRTpsAT4KP/UA==$G8nOF4Y8W7iqRp7vJ8FUJQlPxw4uX/OREcjbQpmYMi8="
-    },
-    {
-        "nombre": "Maria",
-        "apellidos": "Roldan",
-        "num_empleado": "036673",
-        "password_hash": "pbkdf2_sha256$200000$VAD4uEhj9YiLMUPMZk802Q==$x37H/4DCx2CfsEkl5qN0uOroOT9nBGRONH/RyrPdlew="
-    },
-    {
-        "nombre": "Jose Gregorio",
-        "apellidos": "Melo",
-        "num_empleado": "623035",
-        "password_hash": "pbkdf2_sha256$200000$9/ylK+H/tFjqrpS2vovWSg==$Y2pHfwRbbiW13yzukiMuZFgznL64n1d9ivIvNDJ7PTk="
-    },
-    {
-        "nombre": "David",
-        "apellidos": "Rojas",
-        "num_empleado": "182736",
-        "password_hash": "pbkdf2_sha256$200000$KMkQY8sRknIcHXNCetr05A==$M5JdnMKVw4iG9HDJdjFx49IdXtVYt0sb98NRwEwBlb8="
-    },
-    {
-        "nombre": "Alexander",
-        "apellidos": "Carrasco",
-        "num_empleado": "273645",
-        "password_hash": "pbkdf2_sha256$200000$LEE+HyRM18hdmTHjgDOvqg==$7suiGTN9GPE4vUFu+vLbPdvTxaD2SEBf1ZTJX/5hr0g="
-    },
-    {
-        "nombre": "Pilar",
-        "apellidos": "Rodriguez",
-        "num_empleado": "118273",
-        "password_hash": "pbkdf2_sha256$200000$gIWHGOrzUzuo3fofDmy9Mw==$MUFi3CPkGSLfaFD9durl0PB+F0JJQFHuc7WwC8fFx9w="
-    },
-    {
-        "nombre": "Pepe",
-        "apellidos": "Lozano",
-        "num_empleado": "101010",
-        "password_hash": "pbkdf2_sha256$200000$kxdPSoH6OZcbuABFCpl8KQ==$L0nIe0qIkWfneNzcUOpJBZUe3arzKlNglnEuD/Nei0s="
+       
+        "nombre": "Majo",
+        "apellidos": "Rodri",
+        "num_empleado": "963852",
+        "password_hash": "pbkdf2_sha256$200000$MEzi2S6iyjLdPQhksm721g==$9wSGpO8UqUcDX2VXSbFHxaHU7lR4s230bmVvHGbSo+k="
     }
 ]

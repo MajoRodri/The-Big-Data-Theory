@@ -103,12 +103,20 @@ def registrar_nuevo_dato(nuevo_registro):
         return False
 
     historico = leer_historico()
-    for entrada in historico:
-        if entrada["fecha"] == nuevo_registro["fecha"]:
-            if entrada["distrito"].lower() == distrito_limpio.lower():
-                print(f"ERROR: Ya existe un registro para {distrito_limpio} en la fecha {nuevo_registro['fecha']}")
-                print("No se permiten duplicados en el historico.")
-                return False
+    fuente_nueva = nuevo_registro.get("fuente", "manual")
+    registros_misma_clave = [
+        e for e in historico
+        if e.get("fecha") == nuevo_registro["fecha"]
+        and e.get("distrito", "").lower() == distrito_limpio.lower()
+    ]
+    if len(registros_misma_clave) >= 2:
+        print(f"ERROR: Ya existen 2 registros para {distrito_limpio} en {nuevo_registro['fecha']}.")
+        print("No se permiten más de dos registros por distrito y fecha.")
+        return False
+    if any(e.get("fuente", "manual") == fuente_nueva for e in registros_misma_clave):
+        print(f"ERROR: Ya existe un registro con fuente '{fuente_nueva}' para {distrito_limpio} en {nuevo_registro['fecha']}.")
+        print("Solo se permite un registro manual y uno de API por distrito y fecha.")
+        return False
 
     print(f"\nDatos a registrar: {distrito_limpio} | {nuevo_registro['fecha']} | {nuevo_registro['temperatura']} C")
 
