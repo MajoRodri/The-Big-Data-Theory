@@ -772,18 +772,23 @@ class InterfazTBDT:
 
     def mostrar_panel_alertas(self):
         """
-        Panel de alertas activas con filtros por tipo y navegación avanzada.
+        Panel de gestión de alertas con los tres requisitos del proyecto.
         """
         while True:
             self._mostrar_encabezado("🚨 PANEL DE ALERTAS 🚨")
-            self.datos = self._cargar_datos()
+            # BLOQUE: Preparación y obtención de alertas
+            # Cargamos los datos actuales para que la información sea real
+            self.datos = self._cargar_datos() 
             alertas_encontradas = []
 
+            # Recorremos el historial para identificar qué registros tienen alertas activas
             for reg in self.datos:
                 temp = reg.get('temp', reg.get('temperatura', 0))
+                # Analizamos las alertas usando la lógica del módulo alertas.py
                 alertas_locales = self._analizar_alertas(
                     temp, reg.get('humedad', 0), reg.get('viento', 0), reg.get('lluvia', 0)
                 )
+                
                 if alertas_locales:
                     alertas_encontradas.append({
                         'zona': reg.get('distrito', 'Desconocida'),
@@ -792,51 +797,69 @@ class InterfazTBDT:
                     })
 
             if not alertas_encontradas:
-                print("\n✅ No hay alertas activas en ningún distrito en este momento.")
-                input("\nPresione Enter para volver al menú principal...")
+                print("\n✅ El sistema no registra alertas en este momento.")
+                input("\nPresione Enter para volver...")
                 break
 
-            lista_tipos = [
-                "Alerta de calor",
-                "Alerta de frío",
-                "Alerta de viento",
-                "Alerta de humedad",
-                "Alerta de lluvia"
-            ]
+            # MENÚ DE REQUERIMIENTOS
+            self._mostrar_encabezado("🚨 SECCIÓN DE ALERTAS")
+            print("1. Ver alertas de hoy")
+            print("2. Historial de alertas (Últimos 30)")
+            print("3. Filtrar por tipo de alerta (Últimos 30)")
+            print("4. Volver al menú principal")
+            
+            opcion = input("\nSeleccione una opción (1-4): ").strip()
 
-            print(f"\n⚠️  Se detectaron {len(alertas_encontradas)} alertas en el histórico.")
-            self._mostrar_encabezado("OPCIONES DEL PANEL:")
-            print("1. 📅 Ver alertas de hoy")
-            print("2. 📋 Historial de alertas")
-            print("3. 🔍 Filtrar por tipo de alerta")
-            print("4. ⬅️  Volver al menú principal")
-            print("5. 🚪 Salir del sistema")
-
-            opcion = input("\nSeleccione una opción (1-5): ").strip()
-
+            # --- 1. Ver alertas de hoy ---
             if opcion == "1":
-                self._mostrar_alertas_hoy(alertas_encontradas)
-                if self._menu_post_alerta() == "menu_principal":
-                    break
+                # Miramos el reloj del sistema para saber qué día es
+                fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+                # Filtramos: solo guardamos las que coinciden con la fecha actual
+                hoy_lista = [a for a in alertas_encontradas if a['fecha'] == fecha_hoy]
+                
+                print(f"\n--- ALERTAS DE HOY ({fecha_hoy}) ---")
+                if not hoy_lista:
+                    print("No hay alertas registradas con la fecha de hoy.")
+                else:
+                    self._imprimir_alertas(hoy_lista)
+                input("\nPresione Enter para continuar...")
 
+            # --- 2. Historial de alertas (Últimos 30) ---
             elif opcion == "2":
-                self._imprimir_alertas(alertas_encontradas)
-                if self._menu_post_alerta() == "menu_principal":
-                    break
+                # Ordenamos por fecha de más reciente a más antiguo
+                ordenadas = sorted(alertas_encontradas, key=lambda x: x['fecha'], reverse=True)
+                # Aplicamos el "Slicing" [:30] para cumplir con el límite pedido
+                ultimas_30 = ordenadas[:30]
+                
+                print(f"\n--- MOSTRANDO LAS ÚLTIMAS {len(ultimas_30)} ALERTAS ---")
+                self._imprimir_alertas(ultimas_30)
+                input("\nPresione Enter para continuar...")
 
+            # --- 3. Filtrar por tipo (Últimos 30) ---
             elif opcion == "3":
-                accion = self._filtrar_y_mostrar_alertas(alertas_encontradas, lista_tipos)
-                if accion == "menu_principal":
-                    break
+                tipo_buscar = input("¿Qué tipo de alerta buscas? (Calor, Frío, Viento, Lluvia): ").strip().lower()
+                filtradas = []
+                
+                # Buscamos la palabra clave dentro de los mensajes de alerta
+                for item in alertas_encontradas:
+                    for msg in item['alertas']:
+                        # .lower() asegura que encuentre "Calor" aunque el usuario escriba "calor"
+                        if tipo_buscar in msg.lower():
+                            filtradas.append(item)
+                            break 
+                
+                # De las encontradas, cortamos a las últimas 30 más recientes
+                resultado = filtradas[:30]
+                
+                print(f"\n--- RESULTADOS PARA '{tipo_buscar.upper()}' (Máx. 30) ---")
+                if not resultado:
+                    print(f"No se encontraron alertas de ese tipo.")
+                else:
+                    self._imprimir_alertas(resultado)
+                input("\nPresione Enter para continuar...")
 
             elif opcion == "4":
                 break
-
-            elif opcion == "5":
-                self.salir()
-                exit()
-            else:
-                print("❌ Opción no válida.")
 
     def generar_reporte_distrito(self, distrito=None, pausa=True):
         """
