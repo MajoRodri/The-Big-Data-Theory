@@ -41,11 +41,6 @@ def normalizar_respuesta_weatherapi(datos_api: dict, latencia_ms: int) -> dict:
             "descripcion": condicion,
             "latencia_ms": int(latencia_ms),
             "timestamp": datetime.utcnow().isoformat() + "Z",
-            "ubicacion": {
-                "nombre": location.get("name", "Desconocido"),
-                "region": location.get("region", ""),
-                "pais": location.get("country", "")
-            }
         }
     except (TypeError, ValueError, KeyError) as error:
         logger.error(

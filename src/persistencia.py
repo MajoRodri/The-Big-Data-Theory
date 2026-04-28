@@ -16,7 +16,6 @@ CONFIGURACION_DE_ARCHIVO = CARPETA_DATA / "config.json"
 ARCHIVO_EMPLEADOS = CARPETA_DATA / "empleados.json"
 ARCHIVO_USUARIOS = CARPETA_DATA / "usuarios.json"
 
-CONFIRMACION_REQUERIDA = "si"
 logger = logging.getLogger(__name__)
 
 
@@ -79,12 +78,14 @@ def leer_historico():
         return []
 
 
-def registrar_nuevo_dato(nuevo_registro):
+def registrar_nuevo_dato(nuevo_registro, forzar=False):
     """
     Registra un nuevo dato climático con validación de distrito, deduplicación y confirmación.
 
     Args:
         nuevo_registro (dict): Registro climático a guardar.
+        forzar (bool): Si True, omite la confirmación interactiva (para operaciones masivas
+                       donde el usuario ya confirmó antes del bucle).
 
     Returns:
         bool: True si el registro fue guardado, False si fue rechazado o cancelado.
@@ -114,29 +115,29 @@ def registrar_nuevo_dato(nuevo_registro):
         print("Solo se permite un registro manual y uno de API por distrito y fecha.")
         return False
 
-    print(f"\nDatos a registrar: {distrito_limpio} | {nuevo_registro['fecha']} | {nuevo_registro['temperatura']} C")
-
-    while True:
-        confirmar = input("Confirmas guardar estos datos en el sistema? (s/n): ").strip().lower()
-
-        if confirmar == "s":
-            nuevo_registro["distrito"] = distrito_limpio
-            historico.append(nuevo_registro)
-
-            try:
-                with open(ARCHIVO_JSON, "w", encoding="utf-8") as archivo:
-                    json.dump(historico, archivo, indent=4, ensure_ascii=False)
-                print("Registro guardado exitosamente.")
-                return True
-            except Exception as error:
-                print(f"Error critico al escribir en el disco: {error}")
+    if not forzar:
+        print(f"\nDatos a registrar: {distrito_limpio} | {nuevo_registro['fecha']} | {nuevo_registro['temperatura']} C")
+        while True:
+            confirmar = input("Confirmas guardar estos datos en el sistema? (s/n): ").strip().lower()
+            if confirmar == "s":
+                break
+            if confirmar == "n":
+                print("Operacion cancelada. No se han guardado los datos.")
                 return False
+            print("No te he entendido. Escribe solo 's' o 'n'.\n")
 
-        if confirmar == "n":
-            print("Operacion cancelada. No se han guardado los datos.")
-            return False
+    nuevo_registro["distrito"] = distrito_limpio
+    historico.append(nuevo_registro)
 
-        print("No te he entendido. Escribe solo 's' o 'n'.\n")
+    try:
+        with open(ARCHIVO_JSON, "w", encoding="utf-8") as archivo:
+            json.dump(historico, archivo, indent=4, ensure_ascii=False)
+        if not forzar:
+            print("Registro guardado exitosamente.")
+        return True
+    except Exception as error:
+        print(f"Error critico al escribir en el disco: {error}")
+        return False
 
 
 def actualizar_base_de_datos(historico_modificado):

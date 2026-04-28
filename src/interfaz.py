@@ -136,20 +136,117 @@ class InterfazTBDT:
             self._mostrar_encabezado(f"📥 INGESTA AUTOMÁTICA / CARGA DE DATOS  [{estado_txt}]")
             print("1. ⏱️  Encender/Detener ingesta Automática")
             print("2. 🔄 Solicitar datos")
-            print("3. ⬅️  Volver al menú principal")
+            print("3. 📅 Registrar datos de fecha pasada  (todos los distritos)")
+            print("4. ⬅️  Volver al menú principal")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-3): ").strip()
+            opcion = input("Seleccione una opción (1-4): ").strip()
 
             if opcion == "1":
                 self._menu_encender_detener_ingesta()
             elif opcion == "2":
                 self._solicitar_datos()
             elif opcion == "3":
+                self._solicitar_datos_fecha_todos_distritos()
+            elif opcion == "4":
                 break
             else:
                 print("❌ Opción no válida.")
                 input("Presione Enter para continuar...")
+
+    def _solicitar_datos_fecha_todos_distritos(self):
+        self._mostrar_encabezado("📅 REGISTRAR DATOS DE FECHA PASADA — TODOS LOS DISTRITOS")
+        self.datos = self._cargar_datos()
+
+        usuario_id = self.usuario_actual["num_empleado"] if self.usuario_actual else "Sistema"
+        nombre_usuario = (
+            f"{self.usuario_actual.get('nombre', '')} {self.usuario_actual.get('apellidos', '')}".strip()
+            if self.usuario_actual else "Sistema"
+        )
+
+        distritos = persistencia.obtener_distritos_permitidos()
+        if not distritos:
+            print("❌ No hay distritos configurados.")
+            input("Presione Enter para volver...")
+            return
+
+        print(f"\n👤 Solicitado por: {nombre_usuario} ({usuario_id})")
+        print(f"🏙️  Distritos a procesar: {len(distritos)}")
+        print("\n📅 Introduce la fecha pasada que deseas registrar.")
+        print("   Formato: AAAA-MM-DD  |  Escribe 'c' para cancelar.")
+
+        while True:
+            entrada = input("Fecha: ").strip()
+            if entrada.lower() == "c":
+                return
+            try:
+                fecha_obj = datetime.strptime(entrada, "%Y-%m-%d")
+                if fecha_obj >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0):
+                    print("❌ Solo se permiten fechas pasadas.")
+                    continue
+                fecha_buscada = entrada
+                break
+            except ValueError:
+                print("❌ Formato incorrecto. Usa AAAA-MM-DD.")
+
+        print(f"\n🔍 Verificando duplicados para {fecha_buscada}...")
+        distritos_pendientes = []
+        distritos_omitidos = []
+        for d in distritos:
+            if self._validar_duplicado(fecha_buscada, d, fuente="api"):
+                distritos_omitidos.append(d)
+            else:
+                distritos_pendientes.append(d)
+
+        if distritos_omitidos:
+            print(f"⏭️  {len(distritos_omitidos)} distrito(s) ya tienen registro para esa fecha (se omitirán):")
+            for d in distritos_omitidos:
+                print(f"   • {d}")
+
+        if not distritos_pendientes:
+            print("\n✅ Todos los distritos ya tienen registro para esa fecha.")
+            input("Presione Enter para volver...")
+            return
+
+        print(f"\n📋 {len(distritos_pendientes)} distrito(s) a registrar:")
+        for d in distritos_pendientes:
+            print(f"   • {d}")
+
+        confirmar = input(f"\n¿Confirmar solicitud a la API para {len(distritos_pendientes)} distritos? (s/n): ").strip().lower()
+        if confirmar != "s":
+            print("❌ Operación cancelada.")
+            input("Presione Enter para volver...")
+            return
+
+        guardados, errores = [], []
+        for d in distritos_pendientes:
+            print(f"  ⏳ {d}...", end=" ", flush=True)
+            try:
+                registro = Api.obtener_registro_climatico(d, usuario_actual=self.usuario_actual, fecha=fecha_buscada)
+                if registro is None:
+                    print("❌ Sin respuesta de la API")
+                    errores.append(d)
+                    continue
+                registro["solicitado_por"] = usuario_id
+                exito = persistencia.registrar_nuevo_dato(registro, forzar=True)
+                if exito:
+                    print("✅")
+                    guardados.append(d)
+                else:
+                    print("❌ No se pudo guardar")
+                    errores.append(d)
+            except Exception as e:
+                print(f"❌ Error: {e}")
+                errores.append(d)
+
+        self.datos = self._cargar_datos()
+        print(f"\n{'='*50}")
+        print(f"✅ Guardados: {len(guardados)}  |  ⏭️ Omitidos: {len(distritos_omitidos)}  |  ❌ Errores: {len(errores)}")
+        if errores:
+            print(f"\n⚠️  Distritos con error:")
+            for d in errores:
+                print(f"   • {d}")
+        input("\nPresione Enter para volver...")
 
     def _menu_encender_detener_ingesta(self):
         while True:
@@ -220,20 +317,15 @@ class InterfazTBDT:
                     print(f"    {i}. [{err['timestamp']}] {err['distrito']} — {err['mensaje']}")
 
                 print()
-                print("1. 📋 General — Registrar manualmente (todos los distritos con error)")
-                print("2. 📍 Distrito — Registrar manualmente un distrito específico")
-                print("3. ⬅️  Volver")
+                print("1. ✏️  Registrar manualmente un distrito")
+                print("2. ⬅️  Volver")
                 self._mostrar_separador()
 
-                opcion = input("Seleccione una opción (1-3): ").strip()
+                opcion = input("Seleccione una opción (1-2): ").strip()
 
                 if opcion == "1":
-                    print("\n📋 REGISTRO MANUAL GENERAL (fallback por error de API)")
                     self._registrar_datos_manual()
                 elif opcion == "2":
-                    print("\n📍 REGISTRO MANUAL POR DISTRITO (fallback por error de API)")
-                    self._registrar_datos_manual()
-                elif opcion == "3":
                     break
                 else:
                     print("❌ Opción no válida.")
@@ -298,7 +390,7 @@ class InterfazTBDT:
                     "temp": temperatura,
                     "humedad": humedad,
                     "viento": viento,
-                    "lluvia": 0.0,
+                    "lluvia": lluvia,
                     "alertas": alertas_activas,
                     "registrado_por": self.usuario_actual["num_empleado"] if self.usuario_actual else "Desconocido",
                     "editado": False

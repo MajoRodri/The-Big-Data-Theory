@@ -17,54 +17,6 @@ _FRIO  = '#3498db'
 _CALOR = '#f39c12'
 
 
-def generar_reporte_visual_pro():
-    if not os.path.exists(ARCHIVO_BASE):
-        return
-
-    try:
-        with open(ARCHIVO_BASE, "r", encoding="utf-8") as f:
-            datos = json.load(f)
-        pares_validos = [
-            (d.get("distrito", "Desconocido"), d.get("temp", d.get("temperatura")))
-            for d in datos
-            if d.get("temp", d.get("temperatura")) is not None
-        ]
-        distritos = [distrito for distrito, _ in pares_validos]
-        temps = [temp for _, temp in pares_validos]
-
-        if not temps:
-            return
-
-    except (json.JSONDecodeError, KeyError):
-        return
-
-    fig, ax = plt.subplots(figsize=(10, 6), facecolor=_BG)
-    ax.set_facecolor(_BG)
-
-    sns.barplot(
-        x=distritos, y=temps, palette="magma",
-        hue=distritos, legend=False, linewidth=0, errorbar=None, ax=ax,
-    )
-
-    media = np.mean(temps)
-    temps_frio = [t for t in temps if t < media]
-    temps_calor = [t for t in temps if t > media]
-    media_frio = np.mean(temps_frio) if temps_frio else media
-    media_calor = np.mean(temps_calor) if temps_calor else media
-
-    ax.axhline(y=media, color=_MEDIA, linestyle="--", label=f"Media: {media:.2f} C")
-    ax.axhline(y=media_frio, color=_FRIO, linestyle=":", alpha=0.7, label=f"Media Frio: {media_frio:.2f} C")
-    ax.axhline(y=media_calor, color=_CALOR, linestyle=":", alpha=0.7, label=f"Media Calor: {media_calor:.2f} C")
-
-    ax.set_title("Perfil termico por distrito (Media general)", fontweight="bold")
-    ax.set_ylabel("Temperatura (C)")
-    ax.legend()
-    plt.xticks(rotation=45, ha="right")
-
-    plt.tight_layout()
-    plt.show()
-
-
 def generar_reporte_distrito_especifico(distrito_preseleccionado=None):
     if not os.path.exists(ARCHIVO_BASE):
         print("Archivo de datos no encontrado.")
@@ -182,65 +134,6 @@ def generar_reporte_distrito_especifico(distrito_preseleccionado=None):
     print(f"   Media de Frio: {media_frio:.2f} C ({len(temps_frio)} registros)")
     print(f"   Media de Calor: {media_calor:.2f} C ({len(temps_calor)} registros)")
     print("=" * 50 + "\n")
-
-
-def generar_comparativa_periodo(datos, titulo_periodo=""):
-    """Gráfica de medias de temperatura (general, frío y calor) por distrito para un período filtrado."""
-    from collections import defaultdict
-
-    grupos = defaultdict(list)
-    for d in datos:
-        temp = d.get("temp", d.get("temperatura"))
-        if temp is not None:
-            grupos[d.get("distrito", "Desconocido")].append(float(temp))
-
-    if not grupos:
-        print("❌ No hay temperaturas válidas en los datos del período seleccionado.")
-        return
-
-    distritos = sorted(grupos.keys())
-    medias = [sum(grupos[d]) / len(grupos[d]) for d in distritos]
-
-    media_general = np.mean(medias)
-    temps_frio = [t for t in medias if t <= media_general]
-    temps_calor = [t for t in medias if t > media_general]
-    media_frio = np.mean(temps_frio) if temps_frio else media_general
-    media_calor = np.mean(temps_calor) if temps_calor else media_general
-
-    fig, ax = plt.subplots(figsize=(12, 6), facecolor=_BG)
-    ax.set_facecolor(_BG)
-
-    sns.barplot(
-        x=distritos, y=medias, palette="magma",
-        hue=distritos, legend=False, linewidth=0, errorbar=None, ax=ax,
-    )
-
-    ax.axhline(y=media_general, color=_MEDIA, linestyle="--",
-               label=f"Media general: {media_general:.2f} C")
-    ax.axhline(y=media_frio, color=_FRIO, linestyle=":", alpha=0.7,
-               label=f"Media Frio: {media_frio:.2f} C")
-    ax.axhline(y=media_calor, color=_CALOR, linestyle=":", alpha=0.7,
-               label=f"Media Calor: {media_calor:.2f} C")
-
-    titulo = (f"Comparativa de temperaturas por distrito — {titulo_periodo}"
-              if titulo_periodo else "Comparativa de temperaturas por distrito")
-    ax.set_title(titulo, fontweight="bold")
-    ax.set_ylabel("Temperatura media (C)")
-    ax.legend()
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.show()
-
-    print(f"\n{'='*50}")
-    print(f"ESTADÍSTICAS DEL PERÍODO {titulo_periodo}:")
-    print(f"{'='*50}")
-    for d, m in zip(distritos, medias):
-        print(f"   {d}: {m:.2f} C  ({len(grupos[d])} registros)")
-    print(f"   ---")
-    print(f"   Media general: {media_general:.2f} C")
-    print(f"   Media Frío:    {media_frio:.2f} C")
-    print(f"   Media Calor:   {media_calor:.2f} C")
-    print(f"{'='*50}\n")
 
 
 NOMBRES_MES = {
@@ -446,4 +339,4 @@ def generar_comparativa_anual(datos, por_distrito=True):
 
 
 if __name__ == "__main__":
-    generar_reporte_visual_pro()
+    generar_reporte_distrito_especifico()

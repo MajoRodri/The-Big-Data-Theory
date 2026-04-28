@@ -5,7 +5,6 @@ vía WeatherAPI usando APScheduler en un hilo de fondo (daemon thread).
 """
 
 import logging
-import os
 import threading
 from datetime import datetime
 
@@ -19,9 +18,6 @@ logger = logging.getLogger(__name__)
 # ─── Estado interno ───────────────────────────────────────────────────────────
 
 _scheduler = None
-_hora_inicio = int(os.getenv("SCHEDULER_HORAS_ACTIVAS_DESDE", "6"))
-_hora_fin = int(os.getenv("SCHEDULER_HORAS_ACTIVAS_HASTA", "23"))
-
 _lock = threading.Lock()
 
 _ultimo_resumen = {
@@ -68,21 +64,9 @@ def _registrar_error_reciente(distrito, codigo, mensaje, sugerencia):
 
 # ─── Lógica del job ───────────────────────────────────────────────────────────
 
-def _dentro_de_horas_activas():
-    hora = datetime.now().hour
-    return _hora_inicio <= hora < _hora_fin
-
-
 def _tarea_ingesta():
     """Job periódico: obtiene datos de WeatherAPI para todos los distritos configurados."""
     global _ultimo_resumen
-
-    if not _dentro_de_horas_activas():
-        logger.info(
-            "Scheduler: Fuera de horario activo (%dh–%dh). Ciclo omitido.",
-            _hora_inicio, _hora_fin,
-        )
-        return
 
     fecha = datetime.now().strftime("%Y-%m-%d")
     distritos = persistencia.obtener_distritos_permitidos()
@@ -126,6 +110,13 @@ def _tarea_ingesta():
                         registro.get("temperatura", 0),
                         registro.get("latencia_ms", 0),
                     )
+                    alertas_activas = registro.get("alertas", [])
+                    for alerta in alertas_activas:
+                        logger.warning(
+                            "Scheduler: 🚨 ALERTA %s | %s",
+                            distrito,
+                            alerta,
+                        )
 
         except Exception as e:
             errores += 1
@@ -163,10 +154,7 @@ def iniciar():
         id="ingesta_automatica",
     )
     _scheduler.start()
-    logger.info(
-        "Scheduler iniciado | Horario fijo: 07:00h | 15:00h | 22:00h | Horario activo: %dh–%dh",
-        _hora_inicio, _hora_fin,
-    )
+    logger.info("Scheduler iniciado | Horario fijo: 07:00h | 15:00h | 22:00h")
 
 
 def detener():

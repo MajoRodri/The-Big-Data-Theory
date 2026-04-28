@@ -1,12 +1,7 @@
 """
-MÓDULO DE VALIDACIONES (DEV 2 - David)
---------------------------------------
-Este módulo contiene todas las reglas de calidad de datos del Ayuntamiento.
-Proporciona funciones seguras que no rompen el programa si el usuario se equivoca.
-
-Instrucciones para el equipo:
-- DEV 1: Importa estas funciones en tu menu.py (ej: from validaciones import validar_temperatura)
-- DEV 3: Usa validar_duplicado antes de guardar en tu archivo JSON.
+Módulo de validación de datos de entrada para The Big Data Theory.
+Proporciona funciones que validan y normalizan los datos climáticos y de acceso
+introducidos por el usuario, con manejo de errores y corrección tipográfica.
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -36,11 +31,10 @@ import persistencia
 # ─────────────────────────────────────────────────────────────────────────────
 def validar_temperatura():
     """
-    Solicita y valida la temperatura.
-    Rango permitido: -20 a 50 grados Celsius.
-    
-    DEV 1: Llama a esta función sin parámetros.
-    Retorna: Un número float (ej. 25.5).
+    Solicita y valida la temperatura. Rango permitido: -20 a 50 °C.
+
+    Returns:
+        float: Temperatura validada.
     """
     # 'while True' es un bucle infinito. Imagínalo como una puerta giratoria:
     # el usuario está atrapado dentro dando vueltas hasta que introduzca un dato
@@ -92,11 +86,10 @@ def validar_temperatura():
 # ─────────────────────────────────────────────────────────────────────────────
 def validar_humedad():
     """
-    Solicita y valida la humedad ambiental.
-    Rango permitido: 0 a 100%.
-    
-    DEV 1: Llama a esta función sin parámetros.
-    Retorna: Un número float (ej. 45.0).
+    Solicita y valida la humedad ambiental. Rango permitido: 0–100%.
+
+    Returns:
+        float: Humedad validada.
     """
     # Mismo patrón de bucle infinito que en validar_temperatura().
     # El usuario no puede salir hasta que introduzca un dato correcto.
@@ -126,11 +119,10 @@ def validar_humedad():
 # ─────────────────────────────────────────────────────────────────────────────
 def validar_viento():
     """
-    Solicita y valida la velocidad del viento.
-    Rango permitido: 0 a 150 km/h.
-    
-    DEV 1: Llama a esta función sin parámetros.
-    Retorna: Un número float (ej. 12.5).
+    Solicita y valida la velocidad del viento. Rango permitido: 0–150 km/h.
+
+    Returns:
+        float: Velocidad del viento validada.
     """
     # Mismo patrón de bucle + escudo de errores que las funciones anteriores.
     while True:
@@ -435,11 +427,10 @@ def validar_usuario_sesion():
 # ─────────────────────────────────────────────────────────────────────────────
 def validar_lluvia():
     """
-    Solicita y valida la cantidad de lluvia (precipitaciones).
-    Rango permitido: 0 a 500 mm.
-    
-    DEV 1 / DEV 2: Llama a esta función sin parámetros.
-    Retorna: Un número float (ej. 15.5).
+    Solicita y valida la precipitación. Rango permitido: 0–500 mm.
+
+    Returns:
+        float: Precipitación validada.
     """
     while True:
         try:
