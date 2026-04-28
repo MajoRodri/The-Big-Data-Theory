@@ -13,7 +13,7 @@ import persistencia
 import auth
 import analitica
 import api_history
-import Api
+import api
 import scheduler as sched_module
 from datetime import datetime
 
@@ -229,7 +229,7 @@ class InterfazTBDT:
         for d in distritos_pendientes:
             print(f"  ⏳ {d}...", end=" ", flush=True)
             try:
-                registro = Api.obtener_registro_climatico(
+                registro = api.obtener_registro_climatico(
                     d, usuario_actual=self.usuario_actual, fecha=fecha_buscada
                 )
                 if registro is None:
@@ -506,7 +506,7 @@ class InterfazTBDT:
 
                 if opcion == "1":
                     print(f"  ⏳ Reintentando {distrito}...", end=" ", flush=True)
-                    registro = Api.obtener_registro_climatico(distrito)
+                    registro = api.obtener_registro_climatico(distrito)
                     if registro:
                         exito = persistencia.registrar_nuevo_dato(registro, forzar=True)
                         if exito:
@@ -516,7 +516,7 @@ class InterfazTBDT:
                         else:
                             print("❌ No se pudo guardar.")
                     else:
-                        nuevo_err = Api._ultimo_error.copy()
+                        nuevo_err = api._ultimo_error.copy()
                         nuevo_cod = nuevo_err.get("codigo", "N/A")
                         nuevo_cod_str = f"HTTP {nuevo_cod}" if isinstance(nuevo_cod, int) else str(nuevo_cod)
                         print(f"❌ {nuevo_cod_str}")
@@ -678,7 +678,7 @@ class InterfazTBDT:
 
                 # Llamar a la API
                 print(f"\n⏳ Consultando datos para {distrito} ({fecha})...⏳")
-                nuevo_registro = Api.obtener_registro_climatico(
+                nuevo_registro = api.obtener_registro_climatico(
                     distrito,
                     usuario_actual=self.usuario_actual,
                     fecha=fecha,
