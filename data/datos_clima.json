@@ -360,5 +360,25 @@
         "latencia_ms": 56,
         "timestamp": "2026-04-24T20:58:40.766994Z",
         "condicion": "Lluvia  moderada a intervalos"
+    },
+    {
+        "fecha": "2026-04-27",
+        "hora": "21:41:41",
+        "distrito": "Arganzuela",
+        "fuente": "api",
+        "proveedor_api": "weatherapi",
+        "temperatura": 22.1,
+        "temp": 22.1,
+        "humedad": 17.0,
+        "viento": 11.9,
+        "lluvia": 0.0,
+        "presion": 1013.0,
+        "descripcion": "Despejado",
+        "alertas": [],
+        "registrado_por": null,
+        "editado": false,
+        "latencia_ms": 115,
+        "timestamp": "2026-04-27T19:41:41.878718Z",
+        "condicion": "Despejado"
     }
 ]

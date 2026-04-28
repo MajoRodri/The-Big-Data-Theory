@@ -156,21 +156,18 @@ class InterfazTBDT:
 
     def registrar_datos(self):
         """
-        Muestra el submenú de registro y delega en el flujo manual o desde API.
+        Muestra el submenú de registro y delega en el flujo desde API.
         """
         self._mostrar_encabezado("📝 REGISTRAR NUEVOS DATOS CLIMÁTICOS")
-        print("1. Registro manual")
-        print("2. Registro automático desde API")
-        print("3. Volver al menú principal")
+        print("1. 📡 Registro desde API")
+        print("2. ⬅️  Volver al menú principal")
         self._mostrar_separador()
 
-        opcion_registro = input("Seleccione una opción (1-3): ").strip()
+        opcion_registro = input("Seleccione una opción (1-2): ").strip()
 
         if opcion_registro == "1":
-            self._registrar_datos_manual()
-        elif opcion_registro == "2":
             self._registrar_datos_api()
-        elif opcion_registro != "3":
+        elif opcion_registro != "2":
             print("❌ Opción no válida.")
             input("Presione Enter para continuar...")
 
@@ -255,19 +252,174 @@ class InterfazTBDT:
                 if input("¿Desea ingresar los datos nuevamente? (s/n): ").lower() != 's':
                     return
 
+    def _registrar_datos_manual_por_distrito(self):
+        """
+        Interfaz especial para registro manual por distrito específico.
+        Permite seleccionar un distrito de la lista oficial y registrar datos manualmente.
+        """
+        self._mostrar_encabezado("🏘️ REGISTRO MANUAL POR DISTRITO")
+        
+        distritos = persistencia.obtener_distritos_permitidos()
+        if not distritos:
+            print("❌ No se encontraron distritos configurados en config.json")
+            input("Presione Enter para volver...")
+            return
+
+        print("\n📍 Distritos disponibles:")
+        for i, distrito in enumerate(distritos, 1):
+            print(f"   {i}. {distrito}")
+
+        try:
+            seleccion = int(input("\nSeleccione un distrito (número): ")) - 1
+            if not (0 <= seleccion < len(distritos)):
+                print("❌ Selección inválida")
+                return
+
+            distrito_seleccionado = distritos[seleccion]
+        except ValueError:
+            print("❌ Ingrese un número válido")
+            return
+
+        # Ahora ejecutar registro manual para ese distrito específico
+        print(f"\n📝 REGISTRO MANUAL PARA {distrito_seleccionado.upper()}")
+        print("-" * 50)
+
+        while True:
+            try:
+                print("\n[1/5] FECHA DEL REGISTRO")
+                fecha = validaciones.validar_fecha()
+
+                if self._validar_duplicado(fecha, distrito_seleccionado):
+                    print(f"⚠️  Ya existe un registro para {distrito_seleccionado} en {fecha}.")
+                    if input("¿Desea intentar con otra fecha? (s/n): ").lower() != 's':
+                        return
+                    continue
+
+                print("\n[2/5] TEMPERATURA (°C)")
+                temperatura = validaciones.validar_temperatura()
+
+                print("\n[3/5] HUMEDAD (%)")
+                humedad = validaciones.validar_humedad()
+
+                print("\n[4/5] VELOCIDAD DEL VIENTO (km/h)")
+                viento = validaciones.validar_viento()
+
+                print("\n[5/5] PRECIPITACIONES (mm)")
+                lluvia = validaciones.validar_lluvia()
+
+                print("\n" + "=" * 50)
+                print("✅ DATOS VALIDADOS EXITOSAMENTE")
+                print("=" * 50)
+
+                umbrales = persistencia.obtener_umbrales_alerta()
+                datos_registro = {
+                    "temperatura": temperatura,
+                    "humedad": humedad,
+                    "viento": viento,
+                    "lluvia": lluvia
+                }
+                alertas_activas = alertas.evaluar_alertas(datos_registro, umbrales)
+
+                if alertas_activas:
+                    print("\n🚨 ALERTAS PRELIMINARES DETECTADAS:")
+                    for alerta in alertas_activas:
+                        print(f"   {alerta}")
+                else:
+                    print("\n✅ Niveles climáticos normales (Sin alertas)")
+
+                print("-" * 50)
+                print(f"Distrito: {distrito_seleccionado}")
+                print(f"Fecha: {fecha}")
+                print(f"Temperatura: {temperatura}°C")
+                print(f"Humedad: {humedad}%")
+                print(f"Viento: {viento} km/h")
+                print(f"Lluvia: {lluvia} mm")
+
+                nuevo_registro = {
+                    "fecha": fecha,
+                    "distrito": distrito_seleccionado,
+                    "temperatura": temperatura,
+                    "temp": temperatura,
+                    "humedad": humedad,
+                    "viento": viento,
+                    "lluvia": lluvia,
+                    "alertas": alertas_activas,
+                    "registrado_por": self.usuario_actual["num_empleado"] if self.usuario_actual else "Desconocido",
+                    "editado": False,
+                    "fuente": "manual_distrito"
+                }
+
+                exito = persistencia.registrar_nuevo_dato(nuevo_registro)
+
+                if exito:
+                    self._mostrar_separador()
+                    if input("\n¿Registrar otro dato para este distrito? (s/n): ").strip().lower() != 's':
+                        return
+                else:
+                    return
+
+            except KeyboardInterrupt:
+                print("\n\n❌ Registro cancelado por el usuario")
+                return
+            except Exception as e:
+                print(f"❌ Error inesperado: {e}")
+                if input("¿Desea ingresar los datos nuevamente? (s/n): ").lower() != 's':
+                    return
+
     def _registrar_datos_api(self):
         """
         Registra datos climáticos obteniendo la lectura directamente desde WeatherAPI.
-
-        Solicita el distrito, consulta la API, muestra los datos y confirma el guardado.
+        Permite elegir entre usar la fecha de hoy o introducir una fecha anterior.
         """
         self.datos = self._cargar_datos()
 
         while True:
             try:
-                fecha = datetime.now().strftime("%Y-%m-%d")
+                # Opción 1: Elegir fecha
+                print("\n📅 SELECCIONAR FECHA DEL REGISTRO")
+                print("1. Usar la fecha de hoy")
+                print("2. Introducir una fecha anterior")
+                self._mostrar_separador()
+                
+                opcion_fecha = input("Seleccione una opción (1-2): ").strip()
+                
+                if opcion_fecha == "1":
+                    fecha = datetime.now().strftime("%Y-%m-%d")
+                    print(f"✅ Fecha seleccionada: {fecha}")
+                elif opcion_fecha == "2":
+                    print("\n📅 Introduce una fecha anterior (formato: AAAA-MM-DD)")
+                    fecha = validaciones.validar_fecha()
+                    
+                    # Verificar que no sea una fecha futura
+                    fecha_obj = datetime.strptime(fecha, "%Y-%m-%d")
+                    hoy_obj = datetime.now()
+                    
+                    if fecha_obj > hoy_obj:
+                        print("❌ La fecha no puede ser futura. Intenta de nuevo.")
+                        continue
+                    
+                    print(f"✅ Fecha seleccionada: {fecha}")
+                    
+                    # Mostrar datos registrados en esa fecha
+                    print(f"\n📊 Datos registrados en {fecha}:")
+                    print("-" * 50)
+                    encontrados = 0
+                    for reg in self.datos:
+                        if reg.get("fecha") == fecha:
+                            encontrados += 1
+                            temp = reg.get('temp', reg.get('temperatura', 0))
+                            print(f"  📍 {reg.get('distrito', 'Desconocida')}")
+                            print(f"     🌡️  {temp}°C | 💧 {reg.get('humedad', 0)}% | 💨 {reg.get('viento', 0)} km/h")
+                    
+                    if encontrados == 0:
+                        print(f"  ℹ️ No hay registros para {fecha}")
+                    else:
+                        print(f"  Total: {encontrados} registro(s)")
+                    print("-" * 50)
+                else:
+                    print("❌ Opción no válida.")
+                    continue
 
-                print(f"\n📅 Fecha automática del registro: {fecha}")
                 print("\n[1/1] ZONA/DISTRITO")
                 distrito = validaciones.validar_zona()
                 if not distrito:
@@ -286,10 +438,21 @@ class InterfazTBDT:
                 )
 
                 if nuevo_registro is None:
-                    print("❌ No se pudo obtener datos desde API.")
-                    if input("¿Desea intentarlo nuevamente? (s/n): ").strip().lower() != "s":
+                    print("❌ Error: No se pudo obtener datos desde la API meteorológica.")
+                    print("\n¿Desea registrar los datos manualmente para este distrito?")
+                    
+                    opcion = input("(s) Sí, registrar manual | (n) No, intentar de nuevo | (c) Cancelar: ").strip().lower()
+                    
+                    if opcion == "s":
+                        # Registro manual fallback
+                        self._registrar_datos_manual_fallback(distrito, fecha)
                         return
-                    continue
+                    elif opcion == "n":
+                        if input("¿Desea intentarlo nuevamente? (s/n): ").strip().lower() != "s":
+                            return
+                        continue
+                    else:
+                        return
 
                 print("\n" + "=" * 50)
                 print("✅ DATOS OBTENIDOS DESDE LA API")
@@ -327,6 +490,81 @@ class InterfazTBDT:
                 if input("¿Desea intentarlo nuevamente? (s/n): ").strip().lower() != "s":
                     return
 
+    def _registrar_datos_manual_fallback(self, distrito, fecha):
+        """
+        Fallback para registro manual cuando falla la API.
+        Se invoca solo si el usuario selecciona registrar manualmente después de un error de API.
+
+        Args:
+            distrito (str): Distrito para el cual falló la API.
+            fecha (str): Fecha actual en formato AAAA-MM-DD.
+        """
+        print(f"\n📝 REGISTRO MANUAL FALLBACK - {distrito}")
+        print("Como la API no responde, registra los datos manualmente:")
+        print("-" * 50)
+
+        try:
+            print(f"  📍 Distrito: {distrito}")
+            print(f"  📅 Fecha: {fecha}")
+
+            print("\n[1/4] TEMPERATURA (°C)")
+            temperatura = validaciones.validar_temperatura()
+
+            print("\n[2/4] HUMEDAD (%)")
+            humedad = validaciones.validar_humedad()
+
+            print("\n[3/4] VELOCIDAD DEL VIENTO (km/h)")
+            viento = validaciones.validar_viento()
+
+            print("\n[4/4] PRECIPITACIONES (mm)")
+            lluvia = validaciones.validar_lluvia()
+
+            print("\n" + "=" * 50)
+            print("✅ DATOS VALIDADOS")
+            print("=" * 50)
+
+            umbrales = persistencia.obtener_umbrales_alerta()
+            datos_registro = {
+                "temperatura": temperatura,
+                "humedad": humedad,
+                "viento": viento,
+                "lluvia": lluvia
+            }
+            alertas_activas = alertas.evaluar_alertas(datos_registro, umbrales)
+
+            if alertas_activas:
+                print("\n🚨 ALERTAS PRELIMINARES DETECTADAS:")
+                for alerta in alertas_activas:
+                    print(f"   {alerta}")
+            else:
+                print("\n✅ Niveles climáticos normales (Sin alertas)")
+
+            print("-" * 50)
+
+            nuevo_registro = {
+                "fecha": fecha,
+                "distrito": distrito,
+                "temperatura": temperatura,
+                "temp": temperatura,
+                "humedad": humedad,
+                "viento": viento,
+                "lluvia": lluvia,
+                "alertas": alertas_activas,
+                "registrado_por": self.usuario_actual["num_empleado"] if self.usuario_actual else "Desconocido",
+                "fuente": "manual_fallback_api",
+                "editado": False
+            }
+
+            exito = persistencia.registrar_nuevo_dato(nuevo_registro)
+            if exito:
+                print("\n✅ ¡Datos guardados exitosamente (Registro Manual)!")
+                self.datos = self._cargar_datos()
+
+        except KeyboardInterrupt:
+            print("\n\n❌ Registro cancelado por el usuario")
+        except Exception as e:
+            print(f"❌ Error: {e}")
+
     def obtener_datos_api(self):
         """
         Obtiene datos climáticos desde WeatherAPI para un distrito seleccionado y
@@ -361,10 +599,10 @@ class InterfazTBDT:
             print("❌ Ingrese un número válido")
             return
 
-        print(f"\n⏳ Consultando WeatherAPI para {distrito_seleccionado}...")
+        print(f"\n⏳ Consultando WeatherAPI para Madrid (datos para {distrito_seleccionado})...")
         try:
             registro_api = Api.obtener_registro_climatico(
-                ciudad=distrito_seleccionado,
+                ciudad="Madrid",  # ✅ Siempre consultar "Madrid" a la API
                 usuario_actual=self.usuario_actual
             )
         except Exception as error:
@@ -377,6 +615,9 @@ class InterfazTBDT:
             input("Presione Enter para volver...")
             return
 
+        # ✅ Reemplazar el distrito en el registro con el seleccionado por el usuario
+        registro_api['distrito'] = distrito_seleccionado
+
         print("\n" + "="*50)
         print("✅ DATOS OBTENIDOS DE WEATHERAPI")
         print("="*50)
@@ -386,7 +627,9 @@ class InterfazTBDT:
         print(f"💧 Humedad: {registro_api['humedad']}%")
         print(f"💨 Viento: {registro_api['viento']} km/h")
         print(f"🌧️  Lluvia: {registro_api['lluvia']} mm")
-        print(f"🌤️  Condición: {registro_api['condicion']}")
+        # Usar 'descripcion' del nuevo formato de API
+        descripcion = registro_api.get('descripcion', registro_api.get('condicion', 'Sin datos'))
+        print(f"🌤️  Condición: {descripcion}")
 
         if registro_api['alertas']:
             print("\n🚨 ALERTAS DETECTADAS:")
@@ -1403,21 +1646,100 @@ class InterfazTBDT:
 
         input("\nPresione Enter para volver al menú de análisis...")
 
+    def _ejecutar_ingesta_bajo_demanda(self):
+        """
+        Ejecuta una ingesta de datos bajo demanda (Actualizar Ahora) para todos los distritos.
+        Agrega metadata "solicitado_por" al JSON indicando al usuario que solicitó la ingesta.
+        """
+        self._mostrar_encabezado("🔄 INGESTA BAJO DEMANDA - ACTUALIZAR AHORA")
+        
+        distritos = persistencia.obtener_distritos_permitidos()
+        if not distritos:
+            print("❌ No se encontraron distritos configurados.")
+            return
+
+        print(f"📍 Se actualizarán datos para {len(distritos)} distrito(s)...")
+        print("⏳ Consultando WeatherAPI para todos los distritos...")
+        print("-" * 50)
+
+        fecha = datetime.now().strftime("%Y-%m-%d")
+        usuario_solicitante = self.usuario_actual["nombre"] if self.usuario_actual else "Desconocido"
+        usuario_empleado = self.usuario_actual["num_empleado"] if self.usuario_actual else "ANON"
+
+        guardados = omitidos = errores = 0
+
+        historico = persistencia.leer_historico()
+
+        for distrito in distritos:
+            try:
+                print(f"\n  📡 {distrito}...", end=" ", flush=True)
+                
+                registro = Api.obtener_registro_climatico(
+                    distrito,
+                    usuario_actual=self.usuario_actual
+                )
+                
+                if not registro:
+                    print("❌ Error")
+                    errores += 1
+                    continue
+
+                # Agregar metadata de quién solicitó la ingesta
+                registro["solicitado_por"] = usuario_solicitante
+                
+                # Verificar si ya existe
+                ya_existe = any(
+                    r.get("fecha") == fecha
+                    and r.get("distrito", "").lower() == distrito.lower()
+                    and r.get("fuente") == "api"
+                    for r in historico
+                )
+                
+                if ya_existe:
+                    print("⏭️  (ya existe)")
+                    omitidos += 1
+                else:
+                    historico.append(registro)
+                    guardados += 1
+                    temp = registro.get("temperatura", 0)
+                    print(f"✅ {temp}°C")
+                    
+            except Exception as e:
+                print(f"❌ Error: {str(e)[:30]}")
+                errores += 1
+
+        # Guardar cambios
+        if guardados > 0:
+            try:
+                persistencia.actualizar_base_de_datos(historico)
+                self.datos = self._cargar_datos()
+            except Exception as e:
+                print(f"\n❌ Error al guardar datos: {e}")
+                return
+
+        print("\n" + "-" * 50)
+        print("✅ INGESTA BAJO DEMANDA COMPLETADA")
+        print(f"   ✅ Guardados: {guardados}")
+        print(f"   ⏭️  Omitidos : {omitidos} (ya existían)")
+        print(f"   ❌ Errores  : {errores}")
+        print(f"   👤 Solicitado por: {usuario_solicitante}")
+
     def menu_scheduler(self):
         """
-        Panel de control del scheduler de ingesta automática: iniciar, detener y configurar intervalo.
+        Panel de control del scheduler de ingesta automática: iniciar, detener y configurar horarios.
         """
         while True:
             activo = sched_module.esta_activo()
-            intervalo = sched_module.obtener_intervalo()
+            horarios = sched_module.obtener_intervalo()
             proximo = sched_module.obtener_proximo_disparo()
             resumen = sched_module.obtener_resumen()
 
             self._mostrar_encabezado("⏱️ SCHEDULER DE INGESTA AUTOMÁTICA")
 
             estado_txt = "🟢 ACTIVO" if activo else "🔴 DETENIDO"
+            horarios_txt = ", ".join(f"{h:02d}:00" for h in horarios)
             print(f"\n  Estado:    {estado_txt}")
-            print(f"  Intervalo: cada {intervalo} minutos")
+            print(f"  Horarios:  {horarios_txt}")
             print(f"  Horario activo: {sched_module._hora_inicio}h – {sched_module._hora_fin}h")
             if proximo:
                 print(f"  Próxima ejecución: {proximo.strftime('%H:%M:%S')}")
@@ -1435,7 +1757,7 @@ class InterfazTBDT:
             print()
             print("1. ▶️  Iniciar ingesta automática")
             print("2. ⏹️  Detener ingesta automática")
-            print("3. ⚙️  Cambiar intervalo")
+            print("3. 🔄 Ejecutar ingesta bajo demanda AHORA")
             print("4. ⬅️  Volver al menú de análisis")
             self._mostrar_separador()
 
@@ -1446,13 +1768,11 @@ class InterfazTBDT:
                     print("⚠️  El scheduler ya está activo.")
                 else:
                     try:
-                        entrada = input(f"Intervalo en minutos (5-120) [Enter para {intervalo}]: ").strip()
-                        mins = int(entrada) if entrada else intervalo
-                        sched_module.iniciar(mins)
-                        print(f"\n✅ Scheduler iniciado. Primera ingesta arrancando ahora.")
-                        print(f"   Siguiente ciclo en {sched_module.obtener_intervalo()} minutos.")
-                    except ValueError:
-                        print("❌ Introduce un número válido.")
+                        sched_module.iniciar()
+                        print(f"\n✅ Scheduler iniciado.")
+                        print(f"   Horarios de ingesta: {horarios_txt}")
+                    except Exception as e:
+                        print(f"❌ Error al iniciar scheduler: {e}")
                 input("\nPresione Enter para continuar...")
 
             elif opcion == "2":
@@ -1464,18 +1784,7 @@ class InterfazTBDT:
                 input("\nPresione Enter para continuar...")
 
             elif opcion == "3":
-                try:
-                    entrada = input(f"Nuevo intervalo en minutos (5-120) [actual: {intervalo}]: ").strip()
-                    if entrada:
-                        mins = int(entrada)
-                        if activo:
-                            sched_module.iniciar(mins)
-                            print(f"✅ Intervalo cambiado a {sched_module.obtener_intervalo()} min (scheduler reiniciado).")
-                        else:
-                            sched_module.configurar_intervalo(mins)
-                            print(f"✅ Intervalo configurado a {sched_module.obtener_intervalo()} min para el próximo inicio.")
-                except ValueError:
-                    print("❌ Introduce un número válido.")
+                self._ejecutar_ingesta_bajo_demanda()
                 input("\nPresione Enter para continuar...")
 
             elif opcion == "4":

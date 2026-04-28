@@ -1,6 +1,6 @@
 """
 Módulo de ingesta automática programada para The Big Data Theory.
-Ejecuta capturas periódicas de todos los distritos vía WeatherAPI
+Ejecuta capturas en horarios específicos (7:00, 15:00, 22:00) vía WeatherAPI
 usando APScheduler en un hilo de fondo (daemon thread).
 """
 
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # ─── Estado interno ───────────────────────────────────────────────────────────
 
 _scheduler = None
+_horarios_ingesta = list(map(int, os.getenv("SCHEDULER_HORARIOS_INGESTA", "7,15,22").split(",")))
 _intervalo_minutos = int(os.getenv("SCHEDULER_FRECUENCIA_MINUTOS", "30"))
 _hora_inicio = int(os.getenv("SCHEDULER_HORAS_ACTIVAS_DESDE", "6"))
 _hora_fin = int(os.getenv("SCHEDULER_HORAS_ACTIVAS_HASTA", "23"))
@@ -70,10 +71,17 @@ def _tarea_ingesta():
 
     for distrito in distritos:
         try:
-            registro = Api.obtener_registro_climatico(distrito)
+            registro = Api.obtener_registro_climatico(
+                distrito,
+                usuario_actual={"num_empleado": "SYSTEM", "nombre": "Sistema Automático"}
+            )
             if not registro:
                 errores += 1
+                logger.warning("Scheduler: ❌ No se pudo obtener datos para %s", distrito)
                 continue
+
+            # Agregar metadata de quién solicitó la ingesta
+            registro["solicitado_por"] = "Sistema Automático"
 
             with _lock:
                 historico = persistencia.leer_historico()
@@ -117,28 +125,43 @@ def _tarea_ingesta():
 
 # ─── API pública ─────────────────────────────────────────────────────────────
 
-def iniciar(intervalo_minutos=None):
-    """Inicia el scheduler. La primera ingesta arranca de inmediato."""
-    global _scheduler, _intervalo_minutos
+def iniciar(horarios=None):
+    """
+    Inicia el scheduler con trabajos en horarios específicos (7:00, 15:00, 22:00).
+    
+    Args:
+        horarios (list, optional): Lista de horas para programar las ingestas.
+                                   Por defecto usa SCHEDULER_HORARIOS_INGESTA del .env
+    """
+    global _scheduler, _horarios_ingesta
 
-    if intervalo_minutos:
-        _intervalo_minutos = max(5, min(120, int(intervalo_minutos)))
-
+    if horarios:
+        _horarios_ingesta = horarios
+    
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
 
     _scheduler = BackgroundScheduler(daemon=True)
-    _scheduler.add_job(
-        _tarea_ingesta,
-        "interval",
-        minutes=_intervalo_minutos,
-        id="ingesta_automatica",
-        next_run_time=datetime.now(),  # Ejecuta inmediatamente al arrancar
-    )
+    
+    # Agregar un job para cada hora configurada
+    for hora in _horarios_ingesta:
+        job_id = f"ingesta_automatica_{hora:02d}"
+        _scheduler.add_job(
+            _tarea_ingesta,
+            "cron",
+            hour=hora,
+            minute=0,
+            second=0,
+            id=job_id,
+            replace_existing=True
+        )
+        logger.info("Scheduler: Job programado a las %02d:00", hora)
+    
     _scheduler.start()
     logger.info(
-        "Scheduler iniciado | Intervalo: %d min | Horario activo: %dh–%dh",
-        _intervalo_minutos, _hora_inicio, _hora_fin,
+        "Scheduler iniciado | Horarios: %s | Horario activo: %dh–%dh",
+        ",".join(f"{h:02d}:00" for h in sorted(_horarios_ingesta)),
+        _hora_inicio, _hora_fin,
     )
 
 
@@ -174,12 +197,12 @@ def esta_activo():
 
 def obtener_intervalo():
     """
-    Devuelve el intervalo actual configurado para la ingesta automática.
+    Devuelve los horarios configurados para la ingesta automática.
 
     Returns:
-        int: Intervalo en minutos.
+        list: Lista de horas (números enteros) programadas.
     """
-    return _intervalo_minutos
+    return sorted(_horarios_ingesta)
 
 
 def obtener_proximo_disparo():
