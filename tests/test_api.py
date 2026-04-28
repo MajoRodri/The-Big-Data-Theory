@@ -39,7 +39,7 @@ class TestWeatherAPIConexion:
         - Se realiza una petición GET correcta
         - Se devuelve la respuesta JSON y latencia
         """
-        from Api import obtener_respuesta_weatherapi
+        from api import obtener_respuesta_weatherapi
         
         # Mock de respuesta exitosa
         mock_response = Mock()
@@ -88,7 +88,7 @@ class TestWeatherAPIConexion:
         - Se maneja correctamente el error 404
         - Se devuelve None
         """
-        from Api import obtener_respuesta_weatherapi
+        from api import obtener_respuesta_weatherapi
         
         # Mock de variables de entorno
         mock_getenv.side_effect = lambda key, default=None: {
@@ -121,7 +121,7 @@ class TestWeatherAPIConexion:
         - Se maneja correctamente el error 401
         - Se devuelve None
         """
-        from Api import obtener_respuesta_weatherapi
+        from api import obtener_respuesta_weatherapi
         
         # Mock de variables de entorno
         mock_getenv.side_effect = lambda key, default=None: {
@@ -152,7 +152,7 @@ class TestWeatherAPIConexion:
         - Se reintenta después del delay
         - Finalmente falla si no se resuelve
         """
-        from Api import obtener_respuesta_weatherapi
+        from api import obtener_respuesta_weatherapi
         
         # Mock de respuesta 429 en primera llamada, luego 200
         mock_response_429 = Mock()
@@ -195,7 +195,7 @@ class TestWeatherAPIConexion:
         - Se maneja correctamente el timeout
         - Se devuelve None
         """
-        from Api import obtener_respuesta_weatherapi
+        from api import obtener_respuesta_weatherapi
         from requests import Timeout
         
         # Mock de variables de entorno
@@ -224,7 +224,7 @@ class TestWeatherAPIConexion:
         - Se reintenta después del delay
         - Finalmente falla si no se resuelve
         """
-        from Api import obtener_respuesta_weatherapi
+        from api import obtener_respuesta_weatherapi
         
         # Mock de respuesta 500 en primera llamada, luego 200
         mock_response_500 = Mock()
@@ -380,7 +380,7 @@ class TestRegistroClimatico:
         - Se crea un registro completo con todos los campos
         - Incluye alertas y metadatos
         """
-        from Api import obtener_registro_climatico
+        from api import obtener_registro_climatico
         
         # Mock de alertas
         mock_umbrales.return_value = {"temperatura_max": 30}

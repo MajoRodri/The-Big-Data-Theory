@@ -10,7 +10,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-import Api
+import api
 import persistencia
 
 logger = logging.getLogger(__name__)
@@ -85,11 +85,11 @@ def _tarea_ingesta():
 
     for distrito in distritos:
         try:
-            registro = Api.obtener_registro_climatico(distrito)
+            registro = api.obtener_registro_climatico(distrito)
 
             if not registro:
                 errores += 1
-                err = Api._ultimo_error.copy()
+                err = api._ultimo_error.copy()
                 codigo = err.get("codigo")
                 mensaje = err.get("mensaje", "Sin respuesta de la API")
                 sugerencia = _obtener_sugerencia(codigo)
