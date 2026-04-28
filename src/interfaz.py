@@ -3,6 +3,7 @@ Módulo de interfaz para The Big Data Theory.
 Sistema de Monitoreo Climático del Ayuntamiento de Madrid.
 """
 
+import logging
 import os
 import csv
 import shutil
@@ -11,9 +12,12 @@ import alertas
 import persistencia
 import auth
 import analitica
+import api_history
 import Api
 import scheduler as sched_module
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 class InterfazTBDT:
@@ -23,8 +27,6 @@ class InterfazTBDT:
         self.datos = self._cargar_datos()
         self.zonas_validas = self._obtener_zonas()
         self.usuario_actual = usuario_actual
-
-    # ─── Helpers privados ─────────────────────────────────────────────────────
 
     def _cargar_datos(self):
         return persistencia.leer_historico()
@@ -100,8 +102,9 @@ class InterfazTBDT:
 
     def menu_principal(self):
         while True:
-            self._mostrar_encabezado("THE BIG DATA THEORY v2.0")
-            print("1. 📥 Ingesta Automática / Carga de datos")
+            self._verificar_notificacion_scheduler()
+            self._mostrar_encabezado("THE BIG DATA THEORY")
+            print("1. 📥 Carga de Datos")
             print("2. 🔍 Consultar Datos")
             print("3. 📊 Estadísticas")
             print("4. 🚨 Alertas")
@@ -131,12 +134,13 @@ class InterfazTBDT:
 
     def menu_ingesta_automatica(self):
         while True:
+            self._verificar_notificacion_scheduler()
             activo = sched_module.esta_activo()
             estado_txt = "🟢 ACTIVO" if activo else "🔴 DETENIDO"
-            self._mostrar_encabezado(f"📥 INGESTA AUTOMÁTICA / CARGA DE DATOS  [{estado_txt}]")
-            print("1. ⏱️  Encender/Detener ingesta Automática")
+            self._mostrar_encabezado(f"📥 CARGA DE DATOS  [{estado_txt}] 📥")
+            print("1. ⏱️  Encender/Detener")
             print("2. 🔄 Solicitar datos")
-            print("3. 📅 Registrar datos de fecha pasada  (todos los distritos)")
+            print("3. 📅 Registro Retroactivo de Datos")
             print("4. ⬅️  Volver al menú principal")
             self._mostrar_separador()
 
@@ -155,7 +159,7 @@ class InterfazTBDT:
                 input("Presione Enter para continuar...")
 
     def _solicitar_datos_fecha_todos_distritos(self):
-        self._mostrar_encabezado("📅 REGISTRAR DATOS DE FECHA PASADA — TODOS LOS DISTRITOS")
+        self._mostrar_encabezado("📅 REGISTRO RETROACTIVO DE DATOS 📅")
         self.datos = self._cargar_datos()
 
         usuario_id = self.usuario_actual["num_empleado"] if self.usuario_actual else "Sistema"
@@ -171,7 +175,7 @@ class InterfazTBDT:
             return
 
         print(f"\n👤 Solicitado por: {nombre_usuario} ({usuario_id})")
-        print(f"🏙️  Distritos a procesar: {len(distritos)}")
+        print(f"🏙️  Distritos a Registrar: {len(distritos)}")
         print("\n📅 Introduce la fecha pasada que deseas registrar.")
         print("   Formato: AAAA-MM-DD  |  Escribe 'c' para cancelar.")
 
@@ -189,6 +193,7 @@ class InterfazTBDT:
             except ValueError:
                 print("❌ Formato incorrecto. Usa AAAA-MM-DD.")
 
+        # ── 1. Verificar duplicados ────────────────────────────────────────────
         print(f"\n🔍 Verificando duplicados para {fecha_buscada}...")
         distritos_pendientes = []
         distritos_omitidos = []
@@ -199,53 +204,101 @@ class InterfazTBDT:
                 distritos_pendientes.append(d)
 
         if distritos_omitidos:
-            print(f"⏭️  {len(distritos_omitidos)} distrito(s) ya tienen registro para esa fecha (se omitirán):")
-            for d in distritos_omitidos:
-                print(f"   • {d}")
+            print(f"⏭️  {len(distritos_omitidos)} distrito(s) ya registrados para esa fecha (se omitirán).")
 
         if not distritos_pendientes:
             print("\n✅ Todos los distritos ya tienen registro para esa fecha.")
             input("Presione Enter para volver...")
             return
 
-        print(f"\n📋 {len(distritos_pendientes)} distrito(s) a registrar:")
+        print(f"\n📋 {len(distritos_pendientes)} distrito(s) a consultar:")
         for d in distritos_pendientes:
             print(f"   • {d}")
 
-        confirmar = input(f"\n¿Confirmar solicitud a la API para {len(distritos_pendientes)} distritos? (s/n): ").strip().lower()
+        confirmar = input(f"\n¿Consultar la API para estos {len(distritos_pendientes)} distritos? (s/n): ").strip().lower()
         if confirmar != "s":
             print("❌ Operación cancelada.")
             input("Presione Enter para volver...")
             return
 
-        guardados, errores = [], []
+        # ── 2. Consultar API sin guardar aún ──────────────────────────────────
+        print()
+        registros_obtenidos = []
+        errores_api = []
+
         for d in distritos_pendientes:
             print(f"  ⏳ {d}...", end=" ", flush=True)
             try:
-                registro = Api.obtener_registro_climatico(d, usuario_actual=self.usuario_actual, fecha=fecha_buscada)
+                registro = Api.obtener_registro_climatico(
+                    d, usuario_actual=self.usuario_actual, fecha=fecha_buscada
+                )
                 if registro is None:
-                    print("❌ Sin respuesta de la API")
-                    errores.append(d)
-                    continue
-                registro["solicitado_por"] = usuario_id
-                exito = persistencia.registrar_nuevo_dato(registro, forzar=True)
-                if exito:
-                    print("✅")
-                    guardados.append(d)
+                    print("❌")
+                    errores_api.append(d)
                 else:
-                    print("❌ No se pudo guardar")
-                    errores.append(d)
+                    registro["solicitado_por"] = usuario_id
+                    registros_obtenidos.append(registro)
+                    print("✅")
             except Exception as e:
-                print(f"❌ Error: {e}")
-                errores.append(d)
+                print(f"❌ ({e})")
+                errores_api.append(d)
+
+        if not registros_obtenidos:
+            print("\n❌ No se pudo obtener ningún dato de la API.")
+            input("Presione Enter para volver...")
+            return
+
+        # ── 3. Mostrar datos obtenidos ─────────────────────────────────────────
+        print(f"\n{'='*55}")
+        print(f"  📊 DATOS OBTENIDOS — {fecha_buscada}")
+        print(f"{'='*55}")
+        for reg in registros_obtenidos:
+            alertas_reg = reg.get("alertas", [])
+            alerta_tag = f"  🚨×{len(alertas_reg)}" if alertas_reg else ""
+            print(
+                f"  📍 {reg['distrito']:<22} "
+                f"🌡️ {reg['temperatura']:>5.1f}°C | "
+                f"💧{reg['humedad']:>3.0f}% | "
+                f"💨{reg['viento']:>4.0f}km/h | "
+                f"🌧️{reg['lluvia']:>4.1f}mm{alerta_tag}"
+            )
+        print(f"{'='*55}")
+        print(f"  Total obtenidos: {len(registros_obtenidos)}  |  Errores API: {len(errores_api)}")
+
+        # ── 4. Confirmar guardado ──────────────────────────────────────────────
+        confirmar_guardar = input(
+            f"\n¿Confirmar guardado de {len(registros_obtenidos)} registro(s) en el sistema? (s/n): "
+        ).strip().lower()
+        if confirmar_guardar != "s":
+            print("❌ Datos descartados. No se guardó nada.")
+            input("Presione Enter para volver...")
+            return
+
+        # ── 5. Guardar en JSON ─────────────────────────────────────────────────
+        guardados = []
+        errores_guardado = []
+        for reg in registros_obtenidos:
+            exito = persistencia.registrar_nuevo_dato(reg, forzar=True)
+            if exito:
+                guardados.append(reg["distrito"])
+            else:
+                errores_guardado.append(reg["distrito"])
 
         self.datos = self._cargar_datos()
         print(f"\n{'='*50}")
-        print(f"✅ Guardados: {len(guardados)}  |  ⏭️ Omitidos: {len(distritos_omitidos)}  |  ❌ Errores: {len(errores)}")
-        if errores:
-            print(f"\n⚠️  Distritos con error:")
-            for d in errores:
-                print(f"   • {d}")
+        print(
+            f"  ✅ Guardados: {len(guardados)}  |  "
+            f"⏭️  Omitidos: {len(distritos_omitidos)}  |  "
+            f"❌ Errores: {len(errores_api) + len(errores_guardado)}"
+        )
+        if errores_api:
+            print(f"\n  ⚠️  Sin datos de API:")
+            for d in errores_api:
+                print(f"     • {d}")
+        if errores_guardado:
+            print(f"\n  ⚠️  No se pudieron guardar:")
+            for d in errores_guardado:
+                print(f"     • {d}")
         input("\nPresione Enter para volver...")
 
     def _menu_encender_detener_ingesta(self):
@@ -254,7 +307,7 @@ class InterfazTBDT:
             resumen = sched_module.obtener_resumen()
             proximo = sched_module.obtener_proximo_disparo()
 
-            self._mostrar_encabezado("⏱️ ENCENDER / DETENER INGESTA AUTOMÁTICA")
+            self._mostrar_encabezado("⏱️ ENCENDER / DETENER ⏱️")
             estado_txt = "🟢 ACTIVO" if activo else "🔴 DETENIDO"
             print(f"\n  Estado actual: {estado_txt}")
             if proximo:
@@ -265,17 +318,17 @@ class InterfazTBDT:
 
             print()
             if activo:
-                print("  → [Presione 1 para DETENER la ingesta]")
+                print(" 🔴 → [Presione 1 para DETENER la ingesta] 🔴")
             else:
-                print("  → [Presione 1 para ENCENDER la ingesta]")
+                print(" 🟢 → [Presione 1 para ENCENDER la ingesta] 🟢")
 
             print()
             print("1. ▶️/⏹️  Encender / Detener")
-            print("2. 🕐 Tiempo (Horario fijo 07:00h | 15:00h | 22:00h)")
-            print("3. ⬅️  Volver")
+            print("NOTA: 🕐 Tiempo (Horario fijo 07:00h | 15:00h | 22:00h) 🕐")
+            print("2. ⬅️  Volver")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-3): ").strip()
+            opcion = input("Seleccione una opción (1-2): ").strip()
 
             if opcion == "1":
                 if activo:
@@ -286,53 +339,10 @@ class InterfazTBDT:
                     print("✅ Ingesta automática iniciada.")
                     print("   Horario: 07:00h | 15:00h | 22:00h")
                 input("\nPresione Enter para continuar...")
-
             elif opcion == "2":
-                self._menu_tiempo_ingesta()
-
-            elif opcion == "3":
                 break
             else:
                 print("❌ Opción no válida.")
-
-    def _menu_tiempo_ingesta(self):
-        while True:
-            errores = sched_module.obtener_errores_recientes()
-            resumen = sched_module.obtener_resumen()
-
-            self._mostrar_encabezado("🕐 TIEMPO — HORARIO FIJO DE INGESTA")
-            print("\n  📅 Horario programado:")
-            print("     • 07:00h  •  15:00h  •  22:00h")
-
-            if resumen["ultima_ejecucion"]:
-                ue = resumen["ultima_ejecucion"].strftime("%Y-%m-%d %H:%M:%S")
-                print(f"\n  Último ciclo: {ue}")
-                print(f"  ✅ Guardados: {resumen['guardados']} | ❌ Errores: {resumen['errores']}")
-
-            hay_errores = len(errores) > 0
-
-            if hay_errores:
-                print(f"\n  ⚠️  {len(errores)} error(es) reciente(s) de la API:")
-                for i, err in enumerate(errores[:3], 1):
-                    print(f"    {i}. [{err['timestamp']}] {err['distrito']} — {err['mensaje']}")
-
-                print()
-                print("1. ✏️  Registrar manualmente un distrito")
-                print("2. ⬅️  Volver")
-                self._mostrar_separador()
-
-                opcion = input("Seleccione una opción (1-2): ").strip()
-
-                if opcion == "1":
-                    self._registrar_datos_manual()
-                elif opcion == "2":
-                    break
-                else:
-                    print("❌ Opción no válida.")
-            else:
-                print("\n  ✅ No hay errores recientes en la ingesta automática.")
-                input("\n  Presione Enter para volver...")
-                break
 
     # ─── Registro manual (fallback por error de API) ──────────────────────────
 
@@ -349,7 +359,7 @@ class InterfazTBDT:
                     return
 
                 if self._validar_duplicado(fecha, distrito, fuente="manual"):
-                    print(f"⚠️  Ya existe un registro manual para {distrito} en {fecha}.")
+                    print(f"⚠️  Ya existe un registro para {distrito} en {fecha}.")
                     if input("¿Desea ingresar datos nuevamente? (s/n): ").lower() != 's':
                         return
                     continue
@@ -375,11 +385,11 @@ class InterfazTBDT:
                 alertas_activas = alertas.evaluar_alertas(datos_reg, umbrales)
 
                 if alertas_activas:
-                    print("\n🚨 ALERTAS PRELIMINARES DETECTADAS:")
+                    print("\n🚨 ALERTAS DETECTADAS 🚨 ")
                     for alerta in alertas_activas:
                         print(f"   {alerta}")
                 else:
-                    print("\n✅ Niveles climáticos normales (Sin alertas)")
+                    print("\n✅ Niveles climáticos normales.")
                 print("-" * 50)
 
                 nuevo_registro = {
@@ -412,6 +422,175 @@ class InterfazTBDT:
                 if input("¿Desea ingresar los datos nuevamente? (s/n): ").lower() != 's':
                     return
 
+    # ─── Notificaciones de ingesta automática ────────────────────────────────
+
+    def _verificar_notificacion_scheduler(self):
+        """Comprueba y muestra notificaciones pendientes del scheduler."""
+        notif = sched_module.obtener_notificacion_pendiente()
+        if notif:
+            self._mostrar_notificacion_ingesta(notif)
+            self.datos = self._cargar_datos()
+
+    def _mostrar_notificacion_ingesta(self, notif):
+        """Muestra el resultado de la autoingesta con formato visual limpio."""
+        ts = notif["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+        detalles = notif["detalles"]
+        errores_lista = notif["errores_lista"]
+
+        print("\n" + "=" * 60)
+        print(f"  🔔 AUTOINGESTA AUTOMÁTICA — {ts}")
+        print("=" * 60)
+
+        if detalles:
+            print("\n✅ Datos de clima cargados con éxito.\n")
+            print("📊 REGISTROS POR DISTRITO:")
+            print("-" * 60)
+            for d in detalles:
+                icono = "✅" if d["estado"] == "guardado" else "⏭️ "
+                alerta_tag = f" 🚨×{len(d['alertas'])}" if d.get("alertas") else ""
+                print(
+                    f"  {icono} {d['distrito']:<22} "
+                    f"🌡️ {d['temp']:>5.1f}°C | 💧{d['humedad']:>3.0f}% | "
+                    f"💨{d['viento']:>4.0f}km/h | 🌧️{d['lluvia']:>4.1f}mm  "
+                    f"[HTTP {d['http_code']}]{alerta_tag}"
+                )
+
+        if errores_lista:
+            print(f"\n❌ ERRORES ENCONTRADOS ({len(errores_lista)}):")
+            print("-" * 60)
+            for err in errores_lista:
+                codigo = err["codigo"]
+                codigo_str = f"HTTP {codigo}" if isinstance(codigo, int) else str(codigo)
+                print(f"  ⚠️  {err['distrito']}")
+                print(f"     Error: {codigo_str} — {err['mensaje']}")
+                print(f"     💡 Sugerencia: {err['sugerencia']}")
+
+        print()
+        print(f"  📅 Fecha/hora: {ts}")
+        print(
+            f"  📊 Guardados: {notif['guardados']} | "
+            f"⏭️  Omitidos: {notif['omitidos']} | "
+            f"❌ Errores: {notif['errores']}"
+        )
+        print("\n🚀 Sistema listo para consultas.")
+        print("=" * 60)
+
+        if errores_lista:
+            self._manejar_errores_autoingesta(errores_lista)
+        else:
+            input("\nPresione Enter para continuar...")
+
+    def _manejar_errores_autoingesta(self, errores_lista):
+        """Sub-menú de gestión para cada distrito con error en la autoingesta."""
+        print(f"\n⚠️  Hay {len(errores_lista)} distrito(s) con error. ¿Desea gestionarlos ahora?")
+        print("   1. Sí, gestionar ahora")
+        print("   2. No, continuar")
+        respuesta = input("   Opción (1-2): ").strip()
+        if respuesta != "1":
+            return
+
+        for err in errores_lista:
+            distrito = err["distrito"]
+            codigo = err["codigo"]
+            codigo_str = f"HTTP {codigo}" if isinstance(codigo, int) else str(codigo)
+
+            while True:
+                print(f"\n{'─'*50}")
+                print(f"  ⚠️  {distrito} — Error {codigo_str}")
+                print(f"  💡 {err['sugerencia']}")
+                print("─" * 50)
+                print("  1. 🔄 Reintentar con API")
+                print("  2. ✏️  Registrar manualmente")
+                print("  3. ⏭️  Omitir este distrito")
+                opcion = input("  Opción (1-3): ").strip()
+
+                if opcion == "1":
+                    print(f"  ⏳ Reintentando {distrito}...", end=" ", flush=True)
+                    registro = Api.obtener_registro_climatico(distrito)
+                    if registro:
+                        exito = persistencia.registrar_nuevo_dato(registro, forzar=True)
+                        if exito:
+                            print("✅")
+                            self.datos = self._cargar_datos()
+                            break
+                        else:
+                            print("❌ No se pudo guardar.")
+                    else:
+                        nuevo_err = Api._ultimo_error.copy()
+                        nuevo_cod = nuevo_err.get("codigo", "N/A")
+                        nuevo_cod_str = f"HTTP {nuevo_cod}" if isinstance(nuevo_cod, int) else str(nuevo_cod)
+                        print(f"❌ {nuevo_cod_str}")
+
+                elif opcion == "2":
+                    self._registrar_manual_por_error_api(distrito, err)
+                    break
+
+                elif opcion == "3":
+                    print(f"  ⏭️  Omitido: {distrito}")
+                    break
+
+                else:
+                    print("❌ Opción no válida.")
+
+    def _registrar_manual_por_error_api(self, distrito, err_info):
+        """Registro manual de un distrito cuando la API falla. Loguea el evento correctamente."""
+        codigo = err_info.get("codigo", "N/A")
+        codigo_str = f"http {codigo}" if isinstance(codigo, int) else str(codigo).lower()
+        usuario_id = self.usuario_actual["num_empleado"] if self.usuario_actual else "Sistema"
+
+        # Log: error http (código)
+        logger.warning("error %s | %s", codigo_str, distrito)
+
+        print(f"\n✏️  REGISTRO MANUAL — {distrito}")
+        print(f"   Motivo: error {codigo_str.upper()}")
+
+        try:
+            print("\n[1/4] TEMPERATURA")
+            temperatura = validaciones.validar_temperatura()
+            print("\n[2/4] HUMEDAD")
+            humedad = validaciones.validar_humedad()
+            print("\n[3/4] VELOCIDAD DEL VIENTO")
+            viento = validaciones.validar_viento()
+            print("\n[4/4] PRECIPITACIONES")
+            lluvia = validaciones.validar_lluvia()
+
+            umbrales = persistencia.obtener_umbrales_alerta()
+            datos_reg = {
+                "temperatura": temperatura, "humedad": humedad,
+                "viento": viento, "lluvia": lluvia,
+            }
+            alertas_activas = alertas.evaluar_alertas(datos_reg, umbrales)
+
+            fecha = datetime.now().strftime("%Y-%m-%d")
+            nuevo_registro = {
+                "fecha": fecha,
+                "distrito": distrito,
+                "fuente": "manual",
+                "temperatura": temperatura,
+                "temp": temperatura,
+                "humedad": humedad,
+                "viento": viento,
+                "lluvia": lluvia,
+                "alertas": alertas_activas,
+                "registrado_por": usuario_id,
+                "editado": False,
+            }
+
+            exito = persistencia.registrar_nuevo_dato(nuevo_registro, forzar=True)
+            if exito:
+                # Log: usuario X ha registrado datos manualmente | carga de datos manual
+                logger.info(
+                    "usuario %s ha registrado datos manualmente | carga de datos manual",
+                    usuario_id,
+                )
+                print(f"\n✅ {distrito} registrado manualmente (fuente: manual).")
+                self.datos = self._cargar_datos()
+            else:
+                print(f"❌ No se pudo guardar el registro manual para {distrito}.")
+
+        except KeyboardInterrupt:
+            print(f"\n❌ Registro cancelado para {distrito}.")
+
     def _solicitar_datos(self):
         """Solicita datos desde la API para el distrito y fecha elegidos. Registra 'solicitado_por'."""
         self.datos = self._cargar_datos()
@@ -424,17 +603,17 @@ class InterfazTBDT:
 
         while True:
             try:
-                self._mostrar_encabezado("🔄 SOLICITAR DATOS DESDE API")
+                self._mostrar_encabezado("🔄 SOLICITAR DATOS")
                 print(f"\n👤 Solicitado por: {nombre_usuario} ({usuario_id})")
 
                 # Selección de distrito
                 distritos = persistencia.obtener_distritos_permitidos()
                 if not distritos:
-                    print("❌ No hay distritos configurados.")
+                    print("❌ No se encunetra los Distritos disponibles.")
                     input("Presione Enter para volver...")
                     return
 
-                print("\n📍 Distritos disponibles:")
+                print("\n📍 Distritos disponibles 📍")
                 for i, d in enumerate(distritos, 1):
                     print(f"   {i}. {d}")
                 opcion_volver = len(distritos) + 1
@@ -458,7 +637,7 @@ class InterfazTBDT:
                     continue
 
                 # Selección de fecha (Enter = hoy, o fecha pasada/actual)
-                print(f"\n📅 FECHA DEL REGISTRO")
+                print(f"\n📅 FECHA DEL REGISTRO 📅")
                 print("   Presione Enter para usar la fecha de hoy, o escriba AAAA-MM-DD.")
                 print("   Escribe 'c' para cancelar.")
 
@@ -486,17 +665,19 @@ class InterfazTBDT:
                         continue
 
                 if fecha is None:
-                    continue  # canceló la fecha → vuelve a selección de distrito
+                    continue
 
-                # Verificar duplicado
+                # Refrescar antes de verificar (el scheduler puede haber guardado en background)
+                self.datos = self._cargar_datos()
                 if self._validar_duplicado(fecha, distrito, fuente="api"):
-                    print(f"⚠️  Ya existe un registro de API para {distrito} en {fecha}.")
-                    if input("¿Desea intentarlo con otro distrito/fecha? (s/n): ").strip().lower() != "s":
+                    print(f"\n⚠️  Ya existe un registro API para {distrito} en {fecha}.")
+                    print("   (El scheduler automático pudo haberlo guardado en background)")
+                    if input("¿Solicitar para otro distrito/fecha? (s/n): ").strip().lower() != "s":
                         return
                     continue
 
                 # Llamar a la API
-                print(f"\n⏳ Consultando WeatherAPI para {distrito} ({fecha})...")
+                print(f"\n⏳ Consultando datos para {distrito} ({fecha})...⏳")
                 nuevo_registro = Api.obtener_registro_climatico(
                     distrito,
                     usuario_actual=self.usuario_actual,
@@ -505,7 +686,7 @@ class InterfazTBDT:
 
                 if nuevo_registro is None:
                     print("❌ No se pudo obtener datos desde la API.")
-                    print("\n  1. Reintentar desde la API")
+                    print("\n  1. Reintentar consulta a la API")
                     print("  2. Registrar manualmente")
                     print("  3. Cancelar")
                     opcion_fallo = input("Seleccione una opción (1-3): ").strip()
@@ -517,7 +698,7 @@ class InterfazTBDT:
 
                 # Mostrar datos
                 print("\n" + "=" * 50)
-                print("✅ DATOS OBTENIDOS DESDE LA API")
+                print("✅ DATOS CARGADOS CORRECTAMENTE ✅")
                 print("=" * 50)
                 print(f"📍 Distrito: {nuevo_registro['distrito']}")
                 print(f"📅 Fecha: {nuevo_registro['fecha']}")
@@ -528,13 +709,11 @@ class InterfazTBDT:
                 print(f"👤 Solicitado por: {nombre_usuario}")
 
                 if nuevo_registro.get("alertas"):
-                    print("\n🚨 ALERTAS DETECTADAS:")
+                    print("\n🚨 ALERTAS DETECTADAS 🚨")
                     for alerta in nuevo_registro["alertas"]:
                         print(f"   {alerta}")
                 else:
-                    print("\n✅ Niveles climáticos normales (Sin alertas)")
-
-                # Agregar campo solicitado_por al JSON
+                    print("\n✅ Niveles climáticos normales ✅ ")
                 nuevo_registro["solicitado_por"] = usuario_id
 
                 self._mostrar_separador()
@@ -545,7 +724,9 @@ class InterfazTBDT:
                     if input("\n¿Solicitar otro dato? (s/n): ").strip().lower() != "s":
                         return
                 else:
-                    return
+                    self.datos = self._cargar_datos()
+                    if input("¿Intentar con otro distrito/fecha? (s/n): ").strip().lower() != "s":
+                        return
 
             except KeyboardInterrupt:
                 print("\n\n❌ Solicitud cancelada")
@@ -561,6 +742,7 @@ class InterfazTBDT:
 
     def consultar_datos(self):
         while True:
+            self._verificar_notificacion_scheduler()
             self._mostrar_encabezado("🔍 CONSULTAR DATOS")
             self.datos = self._cargar_datos()
 
@@ -569,25 +751,21 @@ class InterfazTBDT:
                 input("Presione Enter para continuar...")
                 return
 
-            print("1. 🔎 Filtros")
-            print("2. 📈 Ver Histórico por distrito en gráficas")
-            print("3. 📤 Exportar CSV")
-            print("4. 💾 Backup de datos")
-            print("5. ⬅️  Volver al menú principal")
+            print("1. 🔎 Búsqueda de Registros por...")
+            print("2. 📤 Exportar CSV")
+            print("3. 💾 Backup de datos")
+            print("4. ⬅️  Volver al menú principal")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-5): ").strip()
+            opcion = input("Seleccione una opción (1-4): ").strip()
 
             if opcion == "1":
                 self._menu_filtros()
             elif opcion == "2":
-                analitica.generar_reporte_distrito_especifico()
-                input("\nPresione Enter para volver...")
-            elif opcion == "3":
                 self.exportar_datos_csv()
-            elif opcion == "4":
+            elif opcion == "3":
                 self.backup_datos()
-            elif opcion == "5":
+            elif opcion == "4":
                 break
             else:
                 print("❌ Opción no válida.")
@@ -595,10 +773,10 @@ class InterfazTBDT:
 
     def _menu_filtros(self):
         while True:
-            self._mostrar_encabezado("🔎 FILTROS DE CONSULTA")
-            print("1. 📅 Filtrar por Fecha")
-            print("2. 👤 Filtrar por Usuario  (Últimos 30 registros)")
-            print("3. 📍 Filtrar por Distrito  (Últimos 30 registros)")
+            self._mostrar_encabezado("🔎 BÚSQUEDA DE REGISTROS POR...")
+            print("1. 📅 Fecha")
+            print("2. 👤 Usuario")
+            print("3. 📍Distrito")
             print("4. ⬅️  Volver")
             self._mostrar_separador()
 
@@ -617,13 +795,13 @@ class InterfazTBDT:
                 print("❌ Opción no válida.")
 
     def _menu_consultar_fecha(self):
-        print("\n📅 BÚSQUEDA POR FECHA")
+        print("\n📅 POR FECHA 📅")
         try:
             fecha_buscada = validaciones.validar_fecha()
         except KeyboardInterrupt:
             print("\n❌ Búsqueda cancelada.")
             return
-        print(f"\n📊 Datos del día: {fecha_buscada}")
+        print(f"\n📊 Datos del día: {fecha_buscada} 📊")
         self._mostrar_separador()
 
         encontrados = 0
@@ -650,7 +828,7 @@ class InterfazTBDT:
 
     def _menu_filtrar_usuario_ultimos30(self):
         while True:
-            self._mostrar_encabezado("👤 FILTRAR POR USUARIO — ÚLTIMOS 30 REGISTROS")
+            self._mostrar_encabezado("👤 POR USUARIO 👤")
             self.datos = self._cargar_datos()
 
             todos_usuarios = auth.cargar_datos(persistencia.ARCHIVO_USUARIOS)
@@ -659,7 +837,7 @@ class InterfazTBDT:
                 input("Presione Enter para volver...")
                 return
 
-            print("\n📋 Directorio de operarios:")
+            print("\n📋 Directorio de usuarios 📋")
             for i, u in enumerate(todos_usuarios, 1):
                 op_id = u.get("num_empleado", "")
                 nombre_display = f"{u.get('nombre', '')} {u.get('apellidos', '')}".strip()
@@ -671,7 +849,7 @@ class InterfazTBDT:
             print(f"   {opcion_volver}. ⬅️  Volver")
             self._mostrar_separador()
 
-            entrada = input(f"Seleccione un operario (1-{opcion_volver}): ").strip()
+            entrada = input(f"Seleccione un usuario (1-{opcion_volver}): ").strip()
             if entrada == str(opcion_volver):
                 break
 
@@ -693,11 +871,11 @@ class InterfazTBDT:
                     registros_usuario, key=lambda x: x[1].get("fecha", ""), reverse=True
                 )[:30]
 
-                print(f"\n📊 Últimos 30 registros de: {nombre_sel}")
+                print(f"\n📊 Últimos registros de: {nombre_sel}")
                 self._mostrar_separador()
 
                 if not ultimos_30:
-                    print("ℹ️ Este operario no tiene registros en el sistema.")
+                    print("ℹ️ Este usuario no tiene registros en el sistema.")
                 else:
                     for num, (_, reg) in enumerate(ultimos_30, 1):
                         temp = reg.get('temp', reg.get('temperatura', 0))
@@ -712,7 +890,7 @@ class InterfazTBDT:
                         print(f"   🌡️  T: {temp}°C | 💧 H: {reg.get('humedad', 0)}% | 💨 V: {reg.get('viento', 0)} km/h")
                         print("-" * 30)
 
-                    print(f"✅ Mostrando {len(ultimos_30)} de {len(registros_usuario)} registros totales.")
+                    print(f"✅ Mostrando {len(ultimos_30)} de {len(registros_usuario)} registros.")
 
                     if self.usuario_actual and op_seleccionado == self.usuario_actual.get("num_empleado"):
                         hay_editables = any(
@@ -735,7 +913,7 @@ class InterfazTBDT:
 
     def _menu_filtrar_distrito_ultimos30(self):
         while True:
-            self._mostrar_encabezado("📍 FILTRAR POR DISTRITO — ÚLTIMOS 30 REGISTROS")
+            self._mostrar_encabezado("📍 POR DISTRITO 📍")
             self.datos = self._cargar_datos()
 
             distritos = persistencia.obtener_distritos_permitidos()
@@ -765,7 +943,7 @@ class InterfazTBDT:
                 registros_zona = [r for r in self.datos if r.get("distrito", "").lower() == zona.lower()]
                 ultimos_30 = sorted(registros_zona, key=lambda r: r.get("fecha", ""), reverse=True)[:30]
 
-                print(f"\n📊 Últimos 30 registros de: {zona}")
+                print(f"\n📊 Últimos Registros de: {zona}")
                 self._mostrar_separador()
 
                 if not ultimos_30:
@@ -781,7 +959,7 @@ class InterfazTBDT:
                         for alerta_txt in alertas_locales:
                             print(f"   {alerta_txt}")
                         print("-" * 30)
-                    print(f"✅ Mostrando {len(ultimos_30)} de {len(registros_zona)} registros totales.")
+                    print(f"✅ Mostrando {len(ultimos_30)} de {len(registros_zona)} registros.")
 
                 input("\nPresione Enter para continuar...")
 
@@ -847,7 +1025,7 @@ class InterfazTBDT:
             and r.get("distrito", "").lower() == distrito_final.lower()
         ]
         if len(registros_misma_clave) >= 2:
-            print("❌ No se puede guardar la edición: ya existen 2 registros para esa fecha y distrito.")
+            print("❌ No se puede guardar la edición: ya existen registros para esa fecha y distrito.")
             return
         if any(r.get("fuente", "manual") == "manual" for r in registros_misma_clave):
             print("❌ No se puede guardar la edición porque crearía un registro manual duplicado.")
@@ -951,9 +1129,10 @@ class InterfazTBDT:
 
     def menu_estadisticas(self):
         while True:
+            self._verificar_notificacion_scheduler()
             self._mostrar_encabezado("📊 ESTADÍSTICAS")
             print("1. 📈 Estadísticas Generales")
-            print("2. 📉 Gráfica de Comparativas")
+            print("2. 📉 Gráficas")
             print("3. ⬅️  Volver al menú principal")
             self._mostrar_separador()
 
@@ -974,7 +1153,7 @@ class InterfazTBDT:
             self._mostrar_encabezado("📈 ESTADÍSTICAS GENERALES")
             self.ver_metricas_sistema()
 
-            print("\n1. 📋 Generar Reporte Automático")
+            print("\n1. 📋 Generar Reporte")
             print("2. ⬅️  Volver")
             self._mostrar_separador()
 
@@ -989,90 +1168,211 @@ class InterfazTBDT:
 
     def _menu_grafica_comparativas(self):
         while True:
-            self._mostrar_encabezado("📉 GRÁFICA DE COMPARATIVAS")
-            print("   Medias generales de temperaturas (frío y calor) por distrito")
-            print()
-            print("1. 📅 Ver comparativa por Mes")
-            print("2. 📆 Ver comparativa por Año")
-            print("3. ⬅️  Volver")
+            self._mostrar_encabezado("📉 GRÁFICAS 📉")
+            print("1. 🏙️  Comparativa General por Distritos")
+            print("2. 📊 Comparativa Mensual Interanual")
+            print("3. 📅 Comparativa Anual")
+            print("4. ⬅️  Volver")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-3): ").strip()
+            opcion = input("Seleccione una opción (1-4): ").strip()
 
             if opcion == "1":
-                self._comparativa_por_mes()
+                self._grafica_comparativa_distritos()
             elif opcion == "2":
-                self._comparativa_por_anio()
+                self._grafica_comparativa_mensual_interanual()
             elif opcion == "3":
+                self._grafica_comparativa_anual_api()
+            elif opcion == "4":
                 break
             else:
                 print("❌ Opción no válida.")
 
-    def _comparativa_por_mes(self):
+    def _grafica_comparativa_distritos(self):
+        """Gráfica de barras de temperatura para los 21 distritos en una fecha exacta."""
+        self._mostrar_encabezado("🏙️  COMPARATIVA GENERAL POR DISTRITOS")
+
+        fecha_hoy = datetime.now().strftime("%Y-%m-%d")
+        print(f"\n📅 Fecha a analizar (Enter = hoy [{fecha_hoy}], o AAAA-MM-DD, o 'c' para cancelar):")
+        while True:
+            entrada = input("Fecha: ").strip()
+            if entrada.lower() == "c":
+                return
+            if not entrada:
+                fecha = fecha_hoy
+                break
+            try:
+                datetime.strptime(entrada, "%Y-%m-%d")
+                fecha = entrada
+                break
+            except ValueError:
+                print("❌ Formato incorrecto. Usa AAAA-MM-DD.")
+
+        magnitud = "temperatura"
+        distritos = persistencia.obtener_distritos_permitidos()
+        historico_local = self._cargar_datos()
+        presentes = {r.get("distrito", "") for r in historico_local if r.get("fecha") == fecha}
+        pendientes = [d for d in distritos if d not in presentes]
+
+        if pendientes:
+            print(f"\n⏳ {len(pendientes)} distrito(s) sin datos locales consultando API...")
+            fallidos = []
+            for i, d in enumerate(pendientes, 1):
+                print(f"   [{i}/{len(pendientes)}] {d}...", end=" ", flush=True)
+                errores = api_history.asegurar_datos_rango(d, fecha, fecha)
+                if errores:
+                    print("❌")
+                    fallidos.append(d)
+                else:
+                    print("✅")
+            if fallidos:
+                print(f"\n⚠️  Sin datos para {len(fallidos)} distrito(s), usaremos los disponibles.")
+        else:
+            print(f"\n✅ Datos en caché para {fecha}.")
+
         self.datos = self._cargar_datos()
-        if not self.datos:
-            print("❌ No hay datos registrados.")
+        print("\n📊 Generando gráfica...")
+        analitica.grafica_comparativa_distritos(self.datos, fecha, magnitud)
+        input("\nPresione Enter para volver...")
+
+    def _grafica_comparativa_mensual_interanual(self):
+        """Gráfica que superpone los días de un mes de dos años distintos para un distrito."""
+        self._mostrar_encabezado("📊 COMPARATIVA MENSUAL INTERANUAL")
+
+        distritos = persistencia.obtener_distritos_permitidos()
+        if not distritos:
+            print("❌ No hay distritos configurados.")
             input("Presione Enter para volver...")
             return
 
+        print("\n📍 Seleccione un distrito:")
+        for i, d in enumerate(distritos, 1):
+            print(f"   {i}. {d}")
+        opcion_volver = len(distritos) + 1
+        print(f"   {opcion_volver}. ⬅️  Volver")
+        self._mostrar_separador()
+
         while True:
             try:
-                entrada = input("Mes (1-12) o 0 para volver: ").strip()
-                mes = int(entrada)
+                entrada = input(f"Distrito (1-{opcion_volver}): ").strip()
+                if entrada == str(opcion_volver):
+                    return
+                idx = int(entrada) - 1
+                if 0 <= idx < len(distritos):
+                    distrito = distritos[idx]
+                    break
+                print("❌ Selección inválida.")
             except ValueError:
                 print("❌ Introduce un número válido.")
-                continue
 
-            if mes == 0:
-                return
+        anio_actual = datetime.now().year
+        mes_actual = datetime.now().month
 
-            if not (1 <= mes <= 12):
+        while True:
+            try:
+                mes = int(input("\nMes a comparar (1-12): ").strip())
+                if 1 <= mes <= 12:
+                    break
                 print("❌ El mes debe estar entre 1 y 12.")
-                continue
+            except ValueError:
+                print("❌ Introduce un número válido.")
 
-            datos_mes = [
-                r for r in self.datos
-                if len(r.get("fecha", "")) >= 7 and r.get("fecha", "")[5:7] == f"{mes:02d}"
-            ]
+        def _anio_valido(anio):
+            if anio < 1940 or anio > anio_actual:
+                return False
+            if anio == anio_actual and mes > mes_actual:
+                return False
+            return True
 
-            if not datos_mes:
-                print(f"❌ No hay datos registrados para el mes {mes:02d}. Prueba con otro mes.")
-                continue
+        while True:
+            try:
+                anio1 = int(input(f"Primer año (ej. {anio_actual - 4}): ").strip())
+                if _anio_valido(anio1):
+                    break
+                print(f"❌ Año inválido o mes aún no disponible para {anio1}.")
+            except ValueError:
+                print("❌ Introduce un número válido.")
 
-            anios = sorted(set(r.get("fecha", "")[:4] for r in datos_mes if len(r.get("fecha", "")) >= 4))
-            print(f"\n📊 Comparativa histórica del mes {mes:02d}  ({len(datos_mes)} registros de {len(anios)} año(s))...")
-            analitica.generar_comparativa_mensual_historica(datos_mes, mes)
-            input("\nPresione Enter para volver...")
+        while True:
+            try:
+                anio2 = int(input(f"Segundo año (ej. {anio_actual - 1}): ").strip())
+                if anio2 == anio1:
+                    print("❌ Los dos años deben ser distintos.")
+                    continue
+                if _anio_valido(anio2):
+                    break
+                print(f"❌ Año inválido o mes aún no disponible para {anio2}.")
+            except ValueError:
+                print("❌ Introduce un número válido.")
+
+        nombre_mes = analitica.NOMBRES_MES.get(mes, str(mes))
+        print(f"\n⏳ Consultando API para {nombre_mes} de {anio1} y {anio2} en {distrito}... ⏳")
+
+        registros1 = api_history.consultar_datos_mes_sin_guardar(distrito, anio1, mes)
+        print(f"   {'✅' if registros1 else '⚠️ Sin datos'} {nombre_mes} {anio1} — {len(registros1)} días")
+
+        registros2 = api_history.consultar_datos_mes_sin_guardar(distrito, anio2, mes)
+        print(f"   {'✅' if registros2 else '⚠️ Sin datos'} {nombre_mes} {anio2} — {len(registros2)} días")
+
+        if not registros1 and not registros2:
+            print("❌ No se pudieron obtener datos de la API.")
+            input("Presione Enter para volver...")
             return
 
-    def _comparativa_por_anio(self):
+        datos_combinados = registros1 + registros2
+        print(f"\n📊 Generando comparativa {anio1} vs {anio2}...")
+        analitica.grafica_comparativa_mensual_interanual(datos_combinados, distrito, mes, anio1, anio2)
+        input("\nPresione Enter para volver...")
+
+    def _grafica_comparativa_anual_api(self):
+        """Comparativa anual consultando API directamente"""
+        self._mostrar_encabezado("📅 COMPARATIVA ANUAL")
+
+        anio_actual = datetime.now().year
+        anio_ini_default = anio_actual - 4
+
+        print(f"\n📅 Rango de años a consultar")
         while True:
-            self.datos = self._cargar_datos()
-            if not self.datos:
-                print("❌ No hay datos registrados.")
-                input("Presione Enter para volver...")
-                return
-
-            self._mostrar_encabezado("📆 COMPARATIVA POR AÑO")
-            print("1. 📍 Por distrito  — Media anual por distrito y año")
-            print("2. 📊 Media general — Media global por año")
-            print("3. ⬅️  Volver")
-            self._mostrar_separador()
-
-            opcion = input("Seleccione una opción (1-3): ").strip()
-
-            if opcion == "1":
-                print("\n📊 Generando comparativa por distrito...")
-                analitica.generar_comparativa_anual(self.datos, por_distrito=True)
-                input("\nPresione Enter para volver...")
-            elif opcion == "2":
-                print("\n📊 Generando media general anual...")
-                analitica.generar_comparativa_anual(self.datos, por_distrito=False)
-                input("\nPresione Enter para volver...")
-            elif opcion == "3":
+            entrada = input(f"   Año inicial [{anio_ini_default}]: ").strip()
+            if not entrada:
+                anio_inicio = anio_ini_default
                 break
-            else:
-                print("❌ Opción no válida.")
+            try:
+                anio_inicio = int(entrada)
+                if anio_inicio < 1940 or anio_inicio > anio_actual:
+                    print(f"❌ Año inválido. Debe estar entre 1940 y {anio_actual}.")
+                    continue
+                break
+            except ValueError:
+                print("❌ Introduce un año válido.")
+
+        while True:
+            entrada = input(f"   Año final [{anio_actual - 1}]: ").strip()
+            if not entrada:
+                anio_fin = anio_actual - 1
+                break
+            try:
+                anio_fin = int(entrada)
+                if anio_fin < anio_inicio or anio_fin > anio_actual:
+                    print(f"❌ Año inválido. Debe estar entre {anio_inicio} y {anio_actual}.")
+                    continue
+                break
+            except ValueError:
+                print("❌ Introduce un año válido.")
+
+        n_anios = anio_fin - anio_inicio + 1
+        print(f"\n⏳ Consultando API para {n_anios} año(s)...")
+        medias = api_history.consultar_medias_anuales_madrid(anio_inicio, anio_fin)
+
+        if not medias:
+            print("❌ No se pudieron obtener datos de la API.")
+            input("Presione Enter para volver...")
+            return
+
+        print(f"✅ Datos obtenidos para {len(medias)} año(s).")
+        print("\n📊 Generando gráfica...")
+        analitica.grafica_comparativa_anual_api(medias)
+        input("\nPresione Enter para volver...")
 
     def ver_metricas_sistema(self):
         self.datos = self._cargar_datos()
@@ -1205,7 +1505,8 @@ class InterfazTBDT:
 
     def mostrar_panel_alertas(self):
         while True:
-            self._mostrar_encabezado("🚨 PANEL DE ALERTAS")
+            self._verificar_notificacion_scheduler()
+            self._mostrar_encabezado("🚨 PANEL DE ALERTAS 🚨")
             self.datos = self._cargar_datos()
 
             alertas_encontradas = []
@@ -1223,7 +1524,7 @@ class InterfazTBDT:
 
             print(f"\n  📊 Total de registros con alertas: {len(alertas_encontradas)}")
             print("\n1. 📅 Ver alertas de hoy")
-            print("2. 📋 Historial de alertas  (Últimos 30)")
+            print("2. 📋 Historial de alertas")
             print("3. ⬅️  Volver al menú principal")
             self._mostrar_separador()
 
@@ -1252,14 +1553,14 @@ class InterfazTBDT:
         input("\nPresione Enter para volver...")
 
     def _historial_alertas_ultimos30(self, alertas_encontradas):
+        ordenadas = sorted(alertas_encontradas, key=lambda x: x['fecha'], reverse=True)
+        ultimas_30 = ordenadas[:30]
+
+        self._mostrar_encabezado(f"📋 HISTORIAL DE ALERTAS — ÚLTIMAS {len(ultimas_30)}")
+        self._imprimir_alertas(ultimas_30)
+
         while True:
-            ordenadas = sorted(alertas_encontradas, key=lambda x: x['fecha'], reverse=True)
-            ultimas_30 = ordenadas[:30]
-
-            self._mostrar_encabezado(f"📋 HISTORIAL DE ALERTAS — ÚLTIMAS {len(ultimas_30)}")
-            self._imprimir_alertas(ultimas_30)
-
-            print("\n1. 🔍 Filtrar por tipo de alerta  (Últimos 30)")
+            print("\n1. 🔍 Filtrar por tipo de alerta")
             print("2. ⬅️  Volver")
             self._mostrar_separador()
 
@@ -1274,35 +1575,39 @@ class InterfazTBDT:
 
     def _filtrar_alertas_por_tipo_ultimos30(self, alertas_encontradas):
         TIPOS = {
-            "Calor":   ["calor"],
-            "Frío":    ["frío", "frio", "helada"],
-            "Viento":  ["viento"],
-            "Lluvia":  ["lluvia"],
-            "Humedad": ["humedad"],
+            "🔥 Calor":   ["calor"],
+            "❄️  Frío":   ["frío", "frio", "helada"],
+            "💨 Viento":  ["viento"],
+            "🌧️  Lluvia":  ["lluvia"],
+            "💧 Humedad": ["humedad"],
         }
 
+        # Pool: últimas 30 alarmas, prefiriendo año 2026
+        alarmas_2026 = sorted(
+            [a for a in alertas_encontradas if a["fecha"].startswith("2026")],
+            key=lambda x: x["fecha"], reverse=True,
+        )
+        otras = sorted(
+            [a for a in alertas_encontradas if not a["fecha"].startswith("2026")],
+            key=lambda x: x["fecha"], reverse=True,
+        )
+        pool = (alarmas_2026 + otras)[:30]
+
+        tipos_lista = list(TIPOS.keys())
+
         while True:
-            self._mostrar_encabezado("🔍 FILTRAR POR TIPO DE ALERTA — ÚLTIMOS 30")
+            self._verificar_notificacion_scheduler()
+            self._mostrar_encabezado("🔍 FILTRAR POR TIPO DE ALERTA")
 
-            # Solo muestra los tipos que tienen alertas registradas
-            tipos_disponibles = {}
-            for tipo, palabras in TIPOS.items():
-                count = sum(
-                    1 for item in alertas_encontradas
-                    if any(any(p in a.lower() for p in palabras) for a in item['alertas'])
-                )
-                if count > 0:
-                    tipos_disponibles[tipo] = count
-
-            if not tipos_disponibles:
-                print("\n❌ No hay tipos de alerta registrados en el sistema.")
-                input("Presione Enter para volver...")
-                break
-
-            tipos_lista = list(tipos_disponibles.keys())
-            print()
+            print(f"\n  (Últimas {len(pool)} alarmas — preferencia 2026)\n")
             for i, tipo in enumerate(tipos_lista, 1):
-                print(f"   {i}. {tipo}  ({tipos_disponibles[tipo]} registros)")
+                palabras = TIPOS[tipo]
+                count = sum(
+                    1 for item in pool
+                    if any(any(p in a.lower() for p in palabras) for a in item["alertas"])
+                )
+                print(f"   {i}. {tipo:<22}  {count:>3} registro(s)")
+
             opcion_volver = len(tipos_lista) + 1
             print(f"   {opcion_volver}. ⬅️  Volver")
             self._mostrar_separador()
@@ -1324,14 +1629,40 @@ class InterfazTBDT:
             palabras_clave = TIPOS[tipo_sel]
 
             filtradas = [
-                item for item in alertas_encontradas
-                if any(any(p in a.lower() for p in palabras_clave) for a in item['alertas'])
+                item for item in pool
+                if any(any(p in a.lower() for p in palabras_clave) for a in item["alertas"])
             ]
-            ultimas_30_tipo = sorted(filtradas, key=lambda x: x['fecha'], reverse=True)[:30]
 
-            self._mostrar_encabezado(f"🔍 TIPO: {tipo_sel.upper()} — ÚLTIMAS {len(ultimas_30_tipo)}")
-            self._imprimir_alertas(ultimas_30_tipo)
-            print(f"\n✅ Mostrando {len(ultimas_30_tipo)} de {len(filtradas)} registros de tipo '{tipo_sel}'.")
+            self._mostrar_encabezado(f"🔍 {tipo_sel.strip()} — {len(filtradas)} registro(s)")
+
+            if not filtradas:
+                print(f"\n  ℹ️  No hay registros de tipo '{tipo_sel.strip()}' en el pool actual.")
+            else:
+                print("=" * 52)
+                for item in filtradas:
+                    # Buscar datos completos del registro
+                    reg = next(
+                        (r for r in self.datos
+                         if r.get("fecha") == item["fecha"]
+                         and r.get("distrito", "").lower() == item["zona"].lower()),
+                        None,
+                    )
+                    print(f"\n📍 ZONA: {item['zona']} | 📅 FECHA: {item['fecha']}")
+                    if reg:
+                        temp = reg.get("temp", reg.get("temperatura", 0))
+                        fuente = reg.get("fuente", "manual")
+                        print(
+                            f"   🌡️ {temp:.1f}°C | 💧 {reg.get('humedad', 0):.0f}% | "
+                            f"💨 {reg.get('viento', 0):.0f} km/h | 🌧️ {reg.get('lluvia', 0):.1f} mm"
+                            f" | Fuente: {fuente}"
+                        )
+                    print("   " + "─" * 45)
+                    for alerta in item["alertas"]:
+                        if any(p in alerta.lower() for p in palabras_clave):
+                            print(f"   🚨 {alerta}")
+                print("\n" + "=" * 52)
+                print(f"✅ Total: {len(filtradas)} registro(s) con alerta '{tipo_sel.strip()}'.")
+
             input("\nPresione Enter para continuar...")
 
     # ─── Salida ───────────────────────────────────────────────────────────────
