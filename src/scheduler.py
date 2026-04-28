@@ -152,6 +152,7 @@ def iniciar():
         "cron",
         hour="7,15,22",
         id="ingesta_automatica",
+        next_run_time=datetime.now(),
     )
     _scheduler.start()
     logger.info("Scheduler iniciado | Horario fijo: 07:00h | 15:00h | 22:00h")
