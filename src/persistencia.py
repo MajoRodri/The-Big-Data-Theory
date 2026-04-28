@@ -28,7 +28,6 @@ def obtener_distritos_permitidos():
         list: Lista de nombres de distritos. Lista vacía si no existe el archivo.
     """
     if not os.path.exists(CONFIGURACION_DE_ARCHIVO):
-        print(f"Alerta: No se encontro {CONFIGURACION_DE_ARCHIVO}. Se desactivo la validacion territorial.")
         return []
     try:
         with open(CONFIGURACION_DE_ARCHIVO, "r", encoding="utf-8") as archivo:
@@ -46,7 +45,6 @@ def obtener_umbrales_alerta():
         dict: Diccionario con los valores de umbral. Vacío si no existe el archivo.
     """
     if not os.path.exists(CONFIGURACION_DE_ARCHIVO):
-        print(f"Alerta: No se encontro {CONFIGURACION_DE_ARCHIVO}. Sistema sin umbrales.")
         return {}
 
     try:
@@ -66,12 +64,10 @@ def leer_historico():
         list: Lista de registros climáticos. Lista vacía si el archivo no existe o está corrupto.
     """
     if not os.path.exists(ARCHIVO_JSON):
-        print(f"Alerta: No se encontro {ARCHIVO_JSON}.")
         return []
     try:
         with open(ARCHIVO_JSON, "r", encoding="utf-8") as archivo:
             historico = json.load(archivo)
-            logger.info("Historico cargado correctamente desde %s", ARCHIVO_JSON)
             return historico
     except json.JSONDecodeError:
         print("Error: El archivo de datos esta corrupto.")
@@ -162,12 +158,22 @@ def actualizar_base_de_datos(historico_modificado):
         return False
 
 
+def obtener_query_api(distrito):
+    """Devuelve el alias de consulta para WeatherAPI si está configurado, o el nombre del distrito."""
+    try:
+        with open(CONFIGURACION_DE_ARCHIVO, "r", encoding="utf-8") as archivo:
+            config = json.load(archivo)
+            return config.get("alias_api", {}).get(distrito, distrito)
+    except Exception:
+        return distrito
+
+
 def inicializar_archivo_datos():
     """
     Crea el archivo de datos vacío si no existe, para el primer arranque del sistema.
     """
     if not os.path.exists(ARCHIVO_JSON):
-        print(f"Inicializando sistema: Creando nueva base de datos ({ARCHIVO_JSON})...")
+        print("Inicializando sistema: Creando nueva base de datos...")
         try:
             with open(ARCHIVO_JSON, "w", encoding="utf-8") as archivo:
                 json.dump([], archivo)

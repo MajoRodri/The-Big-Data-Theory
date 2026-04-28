@@ -368,34 +368,6 @@ def validar_acceso():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FUNCIÓN: validar_duplicado()
-# Actúa como un revisor que comprueba si ya existe un registro igual
-# antes de guardarlo. Evita que haya datos repetidos en la base de datos.
-# ─────────────────────────────────────────────────────────────────────────────
-def validar_duplicado(nueva_fecha, nueva_zona, historial):
-    """
-    Comprueba si ya existe un registro para la misma fecha y zona.
-    
-    DEV 3 / DEV 1: Pasad a esta función la fecha, la zona y el JSON cargado.
-    Retorna: True (si hay error de duplicado) o False (si todo está correcto).
-    """
-    # Recorremos todos los registros existentes en la base de datos (el historial).
-    # 'for registro in historial' es como leer las fichas de una carpeta una por una.
-    for registro in historial:
-        # Para cada ficha, comprobamos SI la fecha Y la zona coinciden con lo nuevo.
-        # .lower() en la zona es para que la comparación ignore mayúsculas/minúsculas.
-        if registro['fecha'] == nueva_fecha and registro['distrito'].lower() == nueva_zona.lower():
-            print(f"❌ Error: Ya existen datos para '{nueva_zona}' en la fecha {nueva_fecha}.")
-            print("⚠️ No se permiten registros duplicados para la misma zona el mismo día.")
-            # Devolvemos True para indicar: "Sí, hay duplicado, hay un problema".
-            return True 
-            
-    # Si el bucle termina sin haber encontrado ninguna coincidencia, devolvemos False:
-    # "No hay duplicado, todo está bien, puedes guardar".
-    return False
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # FUNCIÓN: validar_usuario_sesion()
 # Similar a validar_acceso(), pero este portero trabaja para el LOGIN.
 # Busca al usuario en usuarios.json (los ya registrados), no en empleados.json.

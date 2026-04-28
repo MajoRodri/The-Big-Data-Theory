@@ -171,7 +171,8 @@ def obtener_registro_climatico(ciudad, usuario_actual=None, fecha=None):
     Returns:
         dict or None: Registro climático completo, o None si la consulta falla.
     """
-    datos_raw, latencia_ms = obtener_respuesta_weatherapi(ciudad)
+    query = persistencia.obtener_query_api(ciudad)
+    datos_raw, latencia_ms = obtener_respuesta_weatherapi(query)
     if not datos_raw:
         return None
 

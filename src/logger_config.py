@@ -81,7 +81,7 @@ def setup_logging(level=None):
     # ─────────────────────────────────────────────────────────────────────────
     
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(level)
+    console_handler.setLevel(logging.WARNING)
     console_handler.setFormatter(formatter_general)
     logger_raiz.addHandler(console_handler)
     
@@ -102,22 +102,9 @@ def setup_logging(level=None):
     
     # También mostrar logs de API en consola
     console_handler_api = logging.StreamHandler()
-    console_handler_api.setLevel(level)
+    console_handler_api.setLevel(logging.WARNING)
     console_handler_api.setFormatter(formatter_api)
     logger_api.addHandler(console_handler_api)
     
     return logger_raiz
 
-
-def get_logger_api():
-    """
-    Obtiene el logger específico para peticiones HTTP.
-    
-    Retorna:
-        logging.Logger: Logger configurado para API
-    
-    Ejemplo:
-        logger_api = get_logger_api()
-        logger_api.info("✅ OpenWeatherMap OK | Status: 200")
-    """
-    return logging.getLogger("Api")

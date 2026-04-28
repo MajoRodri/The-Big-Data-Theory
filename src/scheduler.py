@@ -1,7 +1,7 @@
 """
 Módulo de ingesta automática programada para The Big Data Theory.
-Ejecuta capturas periódicas de todos los distritos vía WeatherAPI
-usando APScheduler en un hilo de fondo (daemon thread).
+Ejecuta capturas en horario fijo (07:00h, 15:00h, 22:00h) para todos los distritos
+vía WeatherAPI usando APScheduler en un hilo de fondo (daemon thread).
 """
 
 import logging
@@ -19,11 +19,9 @@ logger = logging.getLogger(__name__)
 # ─── Estado interno ───────────────────────────────────────────────────────────
 
 _scheduler = None
-_intervalo_minutos = int(os.getenv("SCHEDULER_FRECUENCIA_MINUTOS", "30"))
 _hora_inicio = int(os.getenv("SCHEDULER_HORAS_ACTIVAS_DESDE", "6"))
 _hora_fin = int(os.getenv("SCHEDULER_HORAS_ACTIVAS_HASTA", "23"))
 
-# Protege escrituras concurrentes al JSON cuando el scheduler corre en paralelo
 _lock = threading.Lock()
 
 _ultimo_resumen = {
@@ -71,12 +69,6 @@ def _registrar_error_reciente(distrito, codigo, mensaje, sugerencia):
 # ─── Lógica del job ───────────────────────────────────────────────────────────
 
 def _dentro_de_horas_activas():
-    """
-    Comprueba si la hora actual está dentro del rango horario configurado para ingesta.
-
-    Returns:
-        bool: True si la hora actual está entre _hora_inicio y _hora_fin.
-    """
     hora = datetime.now().hour
     return _hora_inicio <= hora < _hora_fin
 
@@ -154,14 +146,11 @@ def _tarea_ingesta():
     )
 
 
-# ─── API pública ─────────────────────────────────────────────────────────────
+# ─── API pública ──────────────────────────────────────────────────────────────
 
-def iniciar(intervalo_minutos=None):
-    """Inicia el scheduler. La primera ingesta arranca de inmediato."""
-    global _scheduler, _intervalo_minutos
-
-    if intervalo_minutos:
-        _intervalo_minutos = max(5, min(120, int(intervalo_minutos)))
+def iniciar():
+    """Inicia el scheduler con horario fijo: 07:00h, 15:00h y 22:00h."""
+    global _scheduler
 
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
@@ -169,15 +158,14 @@ def iniciar(intervalo_minutos=None):
     _scheduler = BackgroundScheduler(daemon=True)
     _scheduler.add_job(
         _tarea_ingesta,
-        "interval",
-        minutes=_intervalo_minutos,
+        "cron",
+        hour="7,15,22",
         id="ingesta_automatica",
-        next_run_time=datetime.now(),  # Ejecuta inmediatamente al arrancar
     )
     _scheduler.start()
     logger.info(
-        "Scheduler iniciado | Intervalo: %d min | Horario activo: %dh–%dh",
-        _intervalo_minutos, _hora_inicio, _hora_fin,
+        "Scheduler iniciado | Horario fijo: 07:00h | 15:00h | 22:00h | Horario activo: %dh–%dh",
+        _hora_inicio, _hora_fin,
     )
 
 
@@ -190,44 +178,11 @@ def detener():
     logger.info("Scheduler detenido.")
 
 
-def configurar_intervalo(minutos):
-    """
-    Actualiza el intervalo de ingesta sin reiniciar el scheduler (se aplica en el próximo inicio).
-
-    Args:
-        minutos (int): Nuevo intervalo en minutos (se clampea entre 5 y 120).
-    """
-    global _intervalo_minutos
-    _intervalo_minutos = max(5, min(120, int(minutos)))
-
-
 def esta_activo():
-    """
-    Indica si el scheduler está actualmente en ejecución.
-
-    Returns:
-        bool: True si el scheduler está activo.
-    """
     return _scheduler is not None and _scheduler.running
 
 
-def obtener_intervalo():
-    """
-    Devuelve el intervalo actual configurado para la ingesta automática.
-
-    Returns:
-        int: Intervalo en minutos.
-    """
-    return _intervalo_minutos
-
-
 def obtener_proximo_disparo():
-    """
-    Devuelve la fecha y hora de la próxima ejecución programada del job.
-
-    Returns:
-        datetime or None: Próxima ejecución, o None si el scheduler no está activo.
-    """
     if not (_scheduler and _scheduler.running):
         return None
     jobs = _scheduler.get_jobs()
@@ -235,20 +190,8 @@ def obtener_proximo_disparo():
 
 
 def obtener_resumen():
-    """
-    Devuelve una copia del resumen del último ciclo de ingesta ejecutado.
-
-    Returns:
-        dict: Diccionario con ultima_ejecucion, guardados, omitidos, errores y total_distritos.
-    """
     return _ultimo_resumen.copy()
 
 
 def obtener_errores_recientes():
-    """
-    Devuelve la lista de los errores de conexión más recientes del scheduler.
-
-    Returns:
-        list: Lista de dicts con timestamp, distrito, codigo, mensaje y sugerencia.
-    """
     return list(_errores_recientes)
