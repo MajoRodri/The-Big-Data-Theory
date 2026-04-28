@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 _ultimo_error = {"codigo": None, "mensaje": "", "ciudad": ""}
 
+_session = requests.Session()
+_session.headers.update({"User-Agent": "TheBigDataTheory/2.0"})
+
 
 def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
     """
@@ -50,17 +53,12 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
         "aqi": "no"
     }
 
-    headers = {
-        "User-Agent": "TheBigDataTheory/2.0"
-    }
-
     for intento in range(1, WEATHERAPI_REINTENTOS + 1):
         try:
             inicio = time.time()
-            response = requests.get(
+            response = _session.get(
                 WEATHERAPI_BASE_URL,
                 params=params,
-                headers=headers,
                 timeout=WEATHERAPI_TIMEOUT
             )
             latencia_ms = int((time.time() - inicio) * 1000)
