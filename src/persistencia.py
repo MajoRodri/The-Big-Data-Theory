@@ -107,12 +107,10 @@ def registrar_nuevo_dato(nuevo_registro, forzar=False):
         and e.get("distrito", "").lower() == distrito_limpio.lower()
     ]
     if len(registros_misma_clave) >= 2:
-        print(f"ERROR: Ya existen 2 registros para {distrito_limpio} en {nuevo_registro['fecha']}.")
-        print("No se permiten más de dos registros por distrito y fecha.")
+        print(f"⚠️  Ya existen 2 registros para {distrito_limpio} en {nuevo_registro['fecha']}. Máximo permitido: 2.")
         return False
     if any(e.get("fuente", "manual") == fuente_nueva for e in registros_misma_clave):
-        print(f"ERROR: Ya existe un registro con fuente '{fuente_nueva}' para {distrito_limpio} en {nuevo_registro['fecha']}.")
-        print("Solo se permite un registro manual y uno de API por distrito y fecha.")
+        print(f"⚠️  Ya existe un registro de fuente '{fuente_nueva}' para {distrito_limpio} en {nuevo_registro['fecha']}.")
         return False
 
     if not forzar:
@@ -133,7 +131,7 @@ def registrar_nuevo_dato(nuevo_registro, forzar=False):
         with open(ARCHIVO_JSON, "w", encoding="utf-8") as archivo:
             json.dump(historico, archivo, indent=4, ensure_ascii=False)
         if not forzar:
-            print("Registro guardado exitosamente.")
+            print(f"✅ Registro guardado. Total en sistema: {len(historico)} registros.")
         return True
     except Exception as error:
         print(f"Error critico al escribir en el disco: {error}")
@@ -184,47 +182,3 @@ def inicializar_archivo_datos():
             logger.error("Error critico al crear %s: %s", ARCHIVO_JSON, error)
 
 
-def actualizar_umbrales_alerta(nuevos_umbrales):
-    """
-    Actualiza los umbrales de alerta en config.json manteniendo compatibilidad con ambos esquemas
-    de claves: temperatura_max/temperatura_min (nuevo) y temp_max_roja/temp_min_critica (antiguo).
-
-    Args:
-        nuevos_umbrales (dict): Diccionario con los nuevos valores de umbral.
-
-    Returns:
-        bool: True si la actualización fue exitosa.
-    """
-    try:
-        if os.path.exists(CONFIGURACION_DE_ARCHIVO):
-            with open(CONFIGURACION_DE_ARCHIVO, "r", encoding="utf-8") as archivo:
-                configuracion = json.load(archivo)
-        else:
-            configuracion = {}
-
-        umbrales_base = configuracion.get("umbrales", {}).copy()
-        umbrales_base.update(nuevos_umbrales)
-
-        # Mantiene sincronizados los nombres del esquema antiguo cuando se actualizan los del nuevo
-        if "temperatura_max" in nuevos_umbrales:
-            umbrales_base["temp_max_roja"] = nuevos_umbrales["temperatura_max"]
-            umbrales_base["temp_max_naranja"] = round(nuevos_umbrales["temperatura_max"] - 5.0, 1)
-        if "temperatura_min" in nuevos_umbrales:
-            umbrales_base["temp_min_critica"] = nuevos_umbrales["temperatura_min"]
-            umbrales_base["temp_min_alerta"] = round(nuevos_umbrales["temperatura_min"] + 5.0, 1)
-        if "lluvia_max" in nuevos_umbrales:
-            umbrales_base["lluvia_roja"] = nuevos_umbrales["lluvia_max"]
-            umbrales_base["lluvia_naranja"] = round(nuevos_umbrales["lluvia_max"] * 0.4, 1)
-
-        configuracion["umbrales"] = umbrales_base
-
-        with open(CONFIGURACION_DE_ARCHIVO, "w", encoding="utf-8") as archivo:
-            json.dump(configuracion, archivo, indent=4, ensure_ascii=False)
-
-        logger.info("Umbrales de alerta actualizados correctamente")
-        return True
-
-    except Exception as error:
-        print(f"Error al actualizar umbrales de alerta: {error}")
-        logger.error("Error al actualizar umbrales: %s", error)
-        return False
