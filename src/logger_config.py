@@ -1,12 +1,8 @@
 """
-CONFIGURACIÓN DE LOGGING - PyClima Resiliente
-Proyecto II: Ingesta de datos climáticos
-
-Este módulo centraliza toda la configuración de logging del proyecto,
-incluyendo:
+Módulo de configuración de logging para The Big Data Theory.
+Centraliza la configuración de logging del proyecto:
 - Logs generales de la aplicación (app.log)
 - Logs específicos de peticiones HTTP (api_requests.log)
-- Configuración de niveles y formatos
 """
 
 import logging

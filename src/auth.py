@@ -1,3 +1,8 @@
+"""
+Módulo de autenticación para The Big Data Theory.
+Gestiona registro, inicio de sesión y hashing seguro de contraseñas.
+"""
+
 import base64
 import hashlib
 import hmac
@@ -14,7 +19,8 @@ ALGORITMO_HASH = "pbkdf2_sha256"
 ITERACIONES_HASH = 200000
 
 
-def cargar_datos(archivo):  # Valida la existencia del archivo y su formato correcto, para evitar errores posteriores al cargar datos
+def cargar_datos(archivo):
+    """Carga un archivo JSON y devuelve su contenido como lista. Lista vacía si no existe o está corrupto."""
     if not os.path.exists(archivo):
         return []
     try:
@@ -28,12 +34,14 @@ def cargar_datos(archivo):  # Valida la existencia del archivo y su formato corr
         return []
 
 
-def guardar_datos(archivo, datos):  # Funcion para guardar datos en formato JSON, con manejo de errores
+def guardar_datos(archivo, datos):
+    """Serializa y escribe datos en el archivo JSON indicado."""
     with open(archivo, "w", encoding="utf-8") as f:
         json.dump(datos, f, indent=4, ensure_ascii=False)
 
 
-def generar_hash_password(password):  # Genera un hash seguro de la contraseña con salt aleatorio
+def generar_hash_password(password):
+    """Genera un hash seguro PBKDF2-SHA256 con salt aleatorio."""
     salt = os.urandom(16)
     hash_bytes = hashlib.pbkdf2_hmac(
         "sha256",
@@ -46,7 +54,8 @@ def generar_hash_password(password):  # Genera un hash seguro de la contraseña 
     return f"{ALGORITMO_HASH}${ITERACIONES_HASH}${salt_b64}${hash_b64}"
 
 
-def verificar_password(password, password_hash):  # Verifica una contraseña contra el hash almacenado
+def verificar_password(password, password_hash):
+    """Verifica una contraseña en texto plano contra su hash almacenado. Comparación segura en tiempo constante."""
     try:
         algoritmo, iteraciones, salt_b64, hash_b64 = password_hash.split("$", maxsplit=3)
     except ValueError:
@@ -70,7 +79,8 @@ def verificar_password(password, password_hash):  # Verifica una contraseña con
     return hmac.compare_digest(hash_calculado, hash_guardado)
 
 
-def migrar_passwords_usuarios():  # Migra usuarios con password en claro a password_hash sin romper el flujo
+def migrar_passwords_usuarios():
+    """Migra usuarios con contraseña en texto plano a hash PBKDF2. Idempotente: omite los ya migrados."""
     usuarios = cargar_datos(ARCHIVO_USUARIOS)
     cambios = 0
 
@@ -92,7 +102,8 @@ def migrar_passwords_usuarios():  # Migra usuarios con password en claro a passw
     return cambios
 
 
-def registrar_usuario():  # Funcion para registrar un nuevo usuario, validando que el numero de empleado exista en empleados.json
+def registrar_usuario():
+    """Registra un nuevo usuario validando que su número de empleado exista en empleados.json."""
     try:
         print("\n--- REGISTRO DE NUEVO USUARIO ---")
         migrar_passwords_usuarios()
