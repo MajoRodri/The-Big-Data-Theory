@@ -31,3 +31,5 @@ tabulate==0.10.0
 tzdata==2026.1
 tzlocal==5.3.1
 urllib3==2.6.3
+Flask==3.0.0
+Flask-CORS==4.0.0
