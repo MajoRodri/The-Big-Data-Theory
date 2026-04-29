@@ -1,4 +1,21 @@
-def evaluar_alertas(datos_registro, umbrales): #Creamos función
+"""
+Módulo de evaluación de alertas climáticas para The Big Data Theory.
+Evalúa umbrales de temperatura, viento, lluvia y humedad sobre un registro.
+"""
+
+
+def evaluar_alertas(datos_registro: dict, umbrales: dict) -> list:
+    """
+    Evalúa un registro climático contra los umbrales configurados.
+
+    Args:
+        datos_registro (dict): Registro con temperatura, humedad, viento y lluvia.
+        umbrales (dict): Umbrales leídos desde config.json (compatible con esquema
+                         antiguo y nuevo).
+
+    Returns:
+        list: Lista de strings con las alertas activas. Vacía si no hay alertas.
+    """
     alertas_activas = []
 
     temp = float(datos_registro.get("temperatura", 0))
