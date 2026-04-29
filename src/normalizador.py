@@ -51,6 +51,49 @@ def normalizar_respuesta_weatherapi(datos_api: dict, latencia_ms: int) -> dict:
         return None
 
 
+def normalizar_respuesta_weatherapi_historico(datos_api: dict, latencia_ms: int) -> dict:
+    """
+    Normaliza la respuesta de WeatherAPI history.json al formato interno del sistema.
+
+    Args:
+        datos_api (dict): JSON crudo devuelto por WeatherAPI history.json.
+        latencia_ms (int): Latencia de la petición HTTP en milisegundos.
+
+    Returns:
+        dict or None: Datos normalizados con temperatura media diaria, humedad, viento y lluvia.
+    """
+    if not datos_api or not isinstance(datos_api, dict):
+        logger.error("Respuesta de WeatherAPI history inválida o vacía")
+        return None
+
+    try:
+        forecastday = datos_api.get("forecast", {}).get("forecastday", [])
+        if not forecastday:
+            logger.error("WeatherAPI history: forecastday vacío")
+            return None
+
+        dia = forecastday[0].get("day", {})
+        condicion = dia.get("condition", {}).get("text", "Sin datos")
+
+        return {
+            "temperatura": float(dia.get("avgtemp_c", 0.0)),
+            "humedad": float(dia.get("avghumidity", 0.0)),
+            "viento": float(dia.get("maxwind_kph", 0.0)),
+            "lluvia": float(dia.get("totalprecip_mm", 0.0)),
+            "presion": 0.0,
+            "descripcion": condicion,
+            "latencia_ms": int(latencia_ms),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    except (TypeError, ValueError, KeyError, IndexError) as error:
+        logger.error(
+            "Error al normalizar respuesta history de WeatherAPI: %s | datos=%s",
+            error,
+            datos_api,
+        )
+        return None
+
+
 def crear_registro_api(datos_normalizados: dict, distrito: str, usuario_actual=None, fecha=None) -> dict:
     """
     Construye el registro final listo para guardar en el histórico.

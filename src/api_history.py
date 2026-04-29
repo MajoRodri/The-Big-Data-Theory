@@ -457,6 +457,29 @@ def consultar_medias_anuales_madrid(anio_inicio: int, anio_fin: int) -> dict:
     return medias
 
 
+def consultar_datos_fecha_sin_guardar(distrito: str, fecha: str) -> list:
+    """
+    Consulta Open-Meteo para un distrito en una fecha exacta y devuelve los registros
+    sin guardar nada en la BD local.
+
+    Args:
+        distrito: Nombre oficial del distrito de Madrid.
+        fecha: Fecha exacta en formato AAAA-MM-DD.
+
+    Returns:
+        Lista de registros en formato interno, o lista vacía si falla.
+    """
+    coords = _coordenadas(distrito)
+    if not coords:
+        logger.error("Coordenadas no encontradas para %s", distrito)
+        return []
+    lat, lon = coords
+    respuesta = _fetch_open_meteo(lat, lon, fecha, fecha)
+    if respuesta is None:
+        return []
+    return _convertir_a_registros(respuesta, distrito)
+
+
 def asegurar_datos_fecha_todos_distritos(
     fecha: str,
     callback_progreso: Optional[Callable] = None,
