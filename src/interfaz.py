@@ -1214,25 +1214,26 @@ class InterfazTBDT:
         presentes = {r.get("distrito", "") for r in historico_local if r.get("fecha") == fecha}
         pendientes = [d for d in distritos if d not in presentes]
 
+        datos_extra = []
         if pendientes:
             print(f"\n⏳ {len(pendientes)} distrito(s) sin datos locales consultando API...")
             fallidos = []
             for i, d in enumerate(pendientes, 1):
                 print(f"   [{i}/{len(pendientes)}] {d}...", end=" ", flush=True)
-                errores = api_history.asegurar_datos_rango(d, fecha, fecha)
-                if errores:
+                registros = api_history.consultar_datos_fecha_sin_guardar(d, fecha)
+                if not registros:
                     print("❌")
                     fallidos.append(d)
                 else:
+                    datos_extra.extend(registros)
                     print("✅")
             if fallidos:
                 print(f"\n⚠️  Sin datos para {len(fallidos)} distrito(s), usaremos los disponibles.")
         else:
             print(f"\n✅ Datos en caché para {fecha}.")
 
-        self.datos = self._cargar_datos()
         print("\n📊 Generando gráfica...")
-        analitica.grafica_comparativa_distritos(self.datos, fecha, magnitud)
+        analitica.grafica_comparativa_distritos(historico_local + datos_extra, fecha, magnitud)
         input("\nPresione Enter para volver...")
 
     def _grafica_comparativa_mensual_interanual(self):
