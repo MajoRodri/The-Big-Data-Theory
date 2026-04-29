@@ -1,7 +1,5 @@
 """
-Módulo de datos históricos desde Open-Meteo Archive para The Big Data Theory.
-Implementa caché inteligente: verifica la BD local antes de llamar a la API externa,
-descargando solo las fechas que falten y guardándolas en datos_clima.json.
+Módulo de datos históricos desde Open-Meteo 
 """
 
 import json
@@ -74,15 +72,6 @@ def _fetch_open_meteo(
 ) -> Optional[dict]:
     """
     Realiza la petición HTTP a Open-Meteo Archive y devuelve la respuesta JSON.
-
-    Args:
-        lat: Latitud del punto geográfico.
-        lon: Longitud del punto geográfico.
-        fecha_inicio: Fecha de inicio del rango (AAAA-MM-DD).
-        fecha_fin: Fecha de fin del rango (AAAA-MM-DD).
-
-    Returns:
-        Diccionario con la respuesta JSON, o None si la petición falla.
     """
     params = {
         "latitude": lat,
@@ -179,13 +168,6 @@ def _fetch_open_meteo(
 def _convertir_a_registros(respuesta: dict, distrito: str) -> list:
     """
     Convierte la respuesta diaria de Open-Meteo al formato interno del sistema.
-
-    Args:
-        respuesta: JSON crudo de Open-Meteo con la clave 'daily'.
-        distrito: Nombre del distrito al que pertenecen los datos.
-
-    Returns:
-        Lista de registros en el formato del modelo interno de datos.
     """
     diario = respuesta.get("daily", {})
     fechas = diario.get("time", [])
@@ -228,13 +210,6 @@ def _convertir_a_registros(respuesta: dict, distrito: str) -> list:
 def _guardar_en_lote(registros_nuevos: list) -> tuple:
     """
     Inserta múltiples registros en la BD con una sola operación de escritura.
-    Respeta las reglas de deduplicación: máximo 2 por fecha+distrito, sin fuente repetida.
-
-    Args:
-        registros_nuevos: Lista de registros a insertar.
-
-    Returns:
-        Tupla (guardados, omitidos) con el conteo de registros procesados.
     """
     if not registros_nuevos:
         return 0, 0
@@ -279,14 +254,6 @@ def _guardar_en_lote(registros_nuevos: list) -> tuple:
 def _fechas_presentes(distrito: str, fecha_inicio: str, fecha_fin: str) -> set:
     """
     Devuelve el conjunto de fechas ya existentes en la BD para un distrito y rango.
-
-    Args:
-        distrito: Nombre oficial del distrito.
-        fecha_inicio: Inicio del rango (AAAA-MM-DD).
-        fecha_fin: Fin del rango (AAAA-MM-DD).
-
-    Returns:
-        Conjunto de strings con las fechas ya almacenadas.
     """
     historico = persistencia.leer_historico()
     return {
@@ -307,14 +274,6 @@ def asegurar_datos_rango(
     """
     Garantiza que existan registros para el distrito en el rango de fechas dado.
     Descarga de Open-Meteo Archive solo las fechas que falten en la BD local.
-
-    Args:
-        distrito: Nombre oficial del distrito de Madrid.
-        fecha_inicio: Fecha de inicio del rango (AAAA-MM-DD).
-        fecha_fin: Fecha de fin del rango (AAAA-MM-DD).
-
-    Returns:
-        Lista de mensajes de error. Lista vacía si todo fue correcto.
     """
     coords = _coordenadas(distrito)
     if not coords:
@@ -347,14 +306,6 @@ def asegurar_datos_rango(
 def asegurar_datos_mes(distrito: str, anio: int, mes: int) -> list:
     """
     Garantiza que existan datos diarios para un distrito durante un mes completo.
-
-    Args:
-        distrito: Nombre oficial del distrito de Madrid.
-        anio: Año como entero (ej. 2023).
-        mes: Mes como entero 1-12.
-
-    Returns:
-        Lista de mensajes de error. Lista vacía si todo fue correcto.
     """
     _, dias = monthrange(anio, mes)
     return asegurar_datos_rango(
@@ -367,13 +318,6 @@ def asegurar_datos_mes(distrito: str, anio: int, mes: int) -> list:
 def asegurar_datos_anio(distrito: str, anio: int) -> list:
     """
     Garantiza que existan datos diarios para un distrito durante un año completo.
-
-    Args:
-        distrito: Nombre oficial del distrito de Madrid.
-        anio: Año como entero (ej. 2023).
-
-    Returns:
-        Lista de mensajes de error. Lista vacía si todo fue correcto.
     """
     return asegurar_datos_rango(distrito, f"{anio}-01-01", f"{anio}-12-31")
 
@@ -383,14 +327,6 @@ def consultar_datos_mes_sin_guardar(distrito: str, anio: int, mes: int) -> list:
     Consulta Open-Meteo para un distrito/año/mes y devuelve los registros diarios
     sin guardar nada en la BD local. Recorta el rango al día de hoy si el mes es
     el actual, para no pedir fechas futuras.
-
-    Args:
-        distrito: Nombre oficial del distrito de Madrid.
-        anio: Año como entero.
-        mes: Mes como entero 1-12.
-
-    Returns:
-        Lista de registros diarios en formato interno, o lista vacía si falla.
     """
     coords = _coordenadas(distrito)
     if not coords:
@@ -423,13 +359,6 @@ def consultar_medias_anuales_madrid(anio_inicio: int, anio_fin: int) -> dict:
     """
     Consulta Open-Meteo Archive para el centroide de Madrid en el rango de años dado.
     No guarda nada en la BD local — solo devuelve las medias anuales.
-
-    Args:
-        anio_inicio: Primer año del rango (inclusive).
-        anio_fin: Último año del rango (inclusive).
-
-    Returns:
-        Diccionario {str(anio): float(media_temp)} para cada año con datos disponibles.
     """
     hoy = date.today()
     medias = {}
@@ -461,13 +390,6 @@ def consultar_datos_fecha_sin_guardar(distrito: str, fecha: str) -> list:
     """
     Consulta Open-Meteo para un distrito en una fecha exacta y devuelve los registros
     sin guardar nada en la BD local.
-
-    Args:
-        distrito: Nombre oficial del distrito de Madrid.
-        fecha: Fecha exacta en formato AAAA-MM-DD.
-
-    Returns:
-        Lista de registros en formato interno, o lista vacía si falla.
     """
     coords = _coordenadas(distrito)
     if not coords:
@@ -487,14 +409,6 @@ def asegurar_datos_fecha_todos_distritos(
     """
     Garantiza que todos los distritos tengan datos para la fecha indicada.
     Agrupa todos los registros nuevos en una sola escritura para mayor eficiencia.
-
-    Args:
-        fecha: Fecha exacta en formato AAAA-MM-DD.
-        callback_progreso: Función opcional llamada antes de cada descarga.
-                           Firma: callback(actual: int, total: int, distrito: str).
-
-    Returns:
-        Diccionario {nombre_distrito: True si hay datos, False si falló la descarga}.
     """
     distritos = persistencia.obtener_distritos_permitidos()
     historico = persistencia.leer_historico()

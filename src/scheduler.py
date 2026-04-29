@@ -208,9 +208,6 @@ def iniciar():
     _activo = True
     _hilo = threading.Thread(target=_hilo_bucle, daemon=True, name="SchedulerTBDT")
     _hilo.start()
-
-    # Ingesta inmediata sin bloquear el hilo principal
-    threading.Thread(target=_tarea_ingesta, daemon=True, name="IngestaInmediata").start()
     logger.info("Scheduler iniciado | Horario: 07:00h | 15:00h | 22:00h")
 
 

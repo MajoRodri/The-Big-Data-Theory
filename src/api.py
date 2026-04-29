@@ -35,13 +35,6 @@ _session.headers.update({"User-Agent": "TheBigDataTheory/2.0"})
 def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
     """
     Consulta WeatherAPI y devuelve la respuesta JSON cruda junto con la latencia medida.
-
-    Args:
-        ciudad (str): Nombre de la ciudad o distrito a consultar.
-        idioma (str): Código de idioma para la descripción de la condición. Por defecto "es".
-
-    Returns:
-        tuple: (dict respuesta_json, int latencia_ms) o (None, None) si falla.
     """
     if not WEATHERAPI_API_KEY:
         logger.error("WEATHERAPI_API_KEY no configurada en .env")
@@ -161,13 +154,6 @@ def obtener_respuesta_weatherapi(ciudad: str, idioma: str = "es") -> tuple:
 def obtener_respuesta_weatherapi_historico(ciudad: str, fecha: str) -> tuple:
     """
     Consulta WeatherAPI history.json para una fecha pasada y devuelve la respuesta JSON con la latencia.
-
-    Args:
-        ciudad (str): Nombre de la ciudad o coordenadas lat,lon.
-        fecha (str): Fecha en formato AAAA-MM-DD (debe ser anterior a hoy).
-
-    Returns:
-        tuple: (dict respuesta_json, int latencia_ms) o (None, None) si falla.
     """
     if not WEATHERAPI_API_KEY:
         logger.error("WEATHERAPI_API_KEY no configurada en .env")
@@ -254,14 +240,6 @@ def obtener_registro_climatico(ciudad, usuario_actual=None, fecha=None):
     """
     Orquesta la consulta a WeatherAPI y devuelve un registro listo para persistencia.
     Usa history.json para fechas pasadas y current.json para la fecha de hoy.
-
-    Args:
-        ciudad (str): Nombre del distrito o ciudad.
-        usuario_actual (dict, optional): Datos del usuario autenticado.
-        fecha (str, optional): Fecha del registro en formato AAAA-MM-DD. Por defecto la fecha actual.
-
-    Returns:
-        dict or None: Registro climático completo, o None si la consulta falla.
     """
     from datetime import date as _date
 

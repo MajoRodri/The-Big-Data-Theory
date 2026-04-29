@@ -14,14 +14,6 @@ logger = logging.getLogger(__name__)
 def normalizar_respuesta_weatherapi(datos_api: dict, latencia_ms: int) -> dict:
     """
     Normaliza la respuesta cruda de WeatherAPI al formato interno del sistema.
-
-    Args:
-        datos_api (dict): JSON crudo devuelto por WeatherAPI.
-        latencia_ms (int): Latencia de la petición HTTP en milisegundos.
-
-    Returns:
-        dict or None: Datos normalizados con temperatura, humedad, viento, lluvia,
-                      presión, descripción y metadatos. None si la respuesta es inválida.
     """
     if not datos_api or not isinstance(datos_api, dict):
         logger.error("Respuesta de WeatherAPI inválida o vacía")
@@ -54,13 +46,6 @@ def normalizar_respuesta_weatherapi(datos_api: dict, latencia_ms: int) -> dict:
 def normalizar_respuesta_weatherapi_historico(datos_api: dict, latencia_ms: int) -> dict:
     """
     Normaliza la respuesta de WeatherAPI history.json al formato interno del sistema.
-
-    Args:
-        datos_api (dict): JSON crudo devuelto por WeatherAPI history.json.
-        latencia_ms (int): Latencia de la petición HTTP en milisegundos.
-
-    Returns:
-        dict or None: Datos normalizados con temperatura media diaria, humedad, viento y lluvia.
     """
     if not datos_api or not isinstance(datos_api, dict):
         logger.error("Respuesta de WeatherAPI history inválida o vacía")
@@ -97,15 +82,6 @@ def normalizar_respuesta_weatherapi_historico(datos_api: dict, latencia_ms: int)
 def crear_registro_api(datos_normalizados: dict, distrito: str, usuario_actual=None, fecha=None) -> dict:
     """
     Construye el registro final listo para guardar en el histórico.
-
-    Args:
-        datos_normalizados (dict): Salida de normalizar_respuesta_weatherapi().
-        distrito (str): Nombre del distrito solicitado.
-        usuario_actual (dict, optional): Datos del usuario autenticado.
-        fecha (str, optional): Fecha del registro en formato AAAA-MM-DD.
-
-    Returns:
-        dict or None: Registro completo con todos los campos del modelo de datos, o None si falla.
     """
     if not datos_normalizados:
         logger.error("No se pueden crear datos de registro sin normalización previa")
