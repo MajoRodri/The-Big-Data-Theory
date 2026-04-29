@@ -1,6 +1,6 @@
 """
 Módulo de ingesta automática programada para The Big Data Theory.
-Ejecuta capturas en horario fijo (07:00h, 15:00h, 22:00h) para todos los distritos
+Ejecuta capturas a tres horarios configurables por el usuario para todos los distritos
 vía WeatherAPI usando un hilo de fondo con bucle de tiempo propio.
 """
 
@@ -31,6 +31,7 @@ _ultimo_resumen = {
 }
 
 _errores_recientes: list = []
+_horas_configuradas: list = [(7, 0), (15, 0), (22, 0)]  # lista de (hora, minuto)
 
 _SUGERENCIAS_ERROR = {
     401: "Revisar la API Key en el archivo .env",
@@ -66,12 +67,16 @@ def _registrar_error_reciente(distrito, codigo, mensaje, sugerencia):
 
 # ─── Lógica del job ───────────────────────────────────────────────────────────
 
-def _tarea_ingesta():
+def _tarea_ingesta(h_slot=None, m_slot=None):
     """Obtiene datos de WeatherAPI para todos los distritos y encola el resultado."""
     global _ultimo_resumen
 
     hora_inicio = datetime.now()
     fecha = hora_inicio.strftime("%Y-%m-%d")
+    if h_slot is not None and m_slot is not None:
+        hora = f"{h_slot:02d}:{m_slot:02d}"
+    else:
+        hora = hora_inicio.strftime("%H:%M")
     distritos = persistencia.obtener_distritos_permitidos()
 
     guardados = omitidos = errores = 0
@@ -79,7 +84,7 @@ def _tarea_ingesta():
     errores_lista: list = []
 
     logger.info(
-        "Scheduler ▶ Iniciando ingesta | %s | %d distritos",
+        "▶ Iniciando ingesta | %s | %d distritos",
         hora_inicio.strftime("%H:%M:%S"), len(distritos),
     )
 
@@ -100,8 +105,10 @@ def _tarea_ingesta():
                     "mensaje": mensaje,
                     "sugerencia": sugerencia,
                 })
-                logger.warning("Scheduler ❌ %s | Error %s: %s", distrito, codigo, mensaje)
+                logger.warning("Error ❌ %s | %s: %s", distrito, codigo, mensaje)
                 continue
+
+            registro["hora"] = hora
 
             with _lock:
                 historico = persistencia.leer_historico()
@@ -109,6 +116,7 @@ def _tarea_ingesta():
                     r.get("fecha") == fecha
                     and r.get("distrito", "").lower() == distrito.lower()
                     and r.get("fuente") == "api"
+                    and r.get("hora") == hora
                     for r in historico
                 )
                 if ya_existe:
@@ -138,7 +146,7 @@ def _tarea_ingesta():
                         "alertas": registro.get("alertas", []),
                     })
                     logger.info(
-                        "Scheduler ✅ %s | %.1f°C", distrito, registro.get("temperatura", 0)
+                        "✅ %s | %.1f°C", distrito, registro.get("temperatura", 0)
                     )
 
         except Exception as exc:
@@ -151,7 +159,7 @@ def _tarea_ingesta():
                 "mensaje": str(exc)[:100],
                 "sugerencia": sugerencia,
             })
-            logger.error("Scheduler ❌ Error en %s: %s", distrito, exc)
+            logger.error("❌ Error en %s: %s", distrito, exc)
 
     _ultimo_resumen = {
         "ultima_ejecucion": hora_inicio,
@@ -162,7 +170,7 @@ def _tarea_ingesta():
     }
 
     logger.info(
-        "Scheduler ■ Completada | Guardados: %d | Omitidos: %d | Errores: %d",
+        " ■ Completada | Guardados: %d | Omitidos: %d | Errores: %d",
         guardados, omitidos, errores,
     )
 
@@ -176,30 +184,68 @@ def _tarea_ingesta():
     })
 
 
+def _imprimir_resumen_ingesta(notif):
+    """Imprime el resumen de la autoingesta directamente en el terminal."""
+    ts = notif["timestamp"].strftime("%H:%M")
+    g, o, e = notif["guardados"], notif["omitidos"], notif["errores"]
+    icono = "✅" if e == 0 else "⚠️ "
+    print(f"\n{icono} Autoingesta {ts} — {g} guardados | {o} omitidos | {e} errores", flush=True)
+
+    guardados_det = [d for d in notif.get("detalles", []) if d["estado"] == "guardado"]
+    if guardados_det:
+        print(f"  {'Distrito':<22} {'Temp':>6} {'Hum':>5} {'Viento':>7} {'Lluvia':>7}", flush=True)
+        print(f"  {'-'*22} {'-'*6} {'-'*5} {'-'*7} {'-'*7}", flush=True)
+        for d in guardados_det:
+            alerta = " 🚨" if d.get("alertas") else ""
+            print(
+                f"  {d['distrito']:<22} {d['temp']:>5.1f}°C "
+                f"{d['humedad']:>4.0f}% {d['viento']:>6.0f}km/h "
+                f"{d['lluvia']:>6.1f}mm{alerta}",
+                flush=True,
+            )
+
+    for err in notif.get("errores_lista", [])[:3]:
+        print(f"   ⚠️  {err['distrito']}: {err['mensaje'][:60]}", flush=True)
+
+
 def _hilo_bucle():
-    """Bucle del hilo de fondo: dispara ingesta a las 07:00, 15:00 y 22:00."""
-    HORAS = {7, 15, 22}
-    disparado: set = set()
+    """Bucle del hilo de fondo: dispara ingesta en los horarios configurados."""
+    ultimos_disparos: dict = {}  # (h, m) → fecha en que disparó por última vez
 
     while _activo:
-        ahora = datetime.now()
-        clave = (ahora.date(), ahora.hour)
+        try:
+            ahora = datetime.now()
+            hoy = ahora.date()
 
-        if ahora.hour in HORAS and clave not in disparado:
-            disparado.add(clave)
-            _tarea_ingesta()
+            for h, m in list(_horas_configuradas):
+                if ultimos_disparos.get((h, m)) == hoy:
+                    continue  # ya disparó hoy en este slot
+                target = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
+                diff = (ahora - target).total_seconds()
+                if 0 <= diff < 300:  # hasta 5 min después del horario programado
+                    print(f"\n▶ Disparando ingesta {h:02d}:{m:02d}...", flush=True)
+                    ultimos_disparos[(h, m)] = hoy
+                    _tarea_ingesta(h, m)
+                    print(f"✅ Ingesta {h:02d}:{m:02d} completada.", flush=True)
+                    try:
+                        notif = _notification_queue.get_nowait()
+                        _imprimir_resumen_ingesta(notif)
+                    except queue.Empty:
+                        pass
 
-        # Limpiar claves de días anteriores
-        hoy = ahora.date()
-        disparado = {k for k in disparado if k[0] == hoy}
+        except Exception as exc:
+            logger.error("❌ Error en bucle — %s", exc)
+            print(f"\n❌ Error en bucle: {exc}", flush=True)
 
-        time.sleep(30)
+        time.sleep(10)
+
+    print("\nHilo detenido.", flush=True)
 
 
 # ─── API pública ──────────────────────────────────────────────────────────────
 
 def iniciar():
-    """Inicia el scheduler y lanza una ingesta inmediata en hilo separado."""
+    """Inicia el scheduler con los horarios actualmente configurados."""
     global _hilo, _activo
 
     if _activo:
@@ -208,7 +254,8 @@ def iniciar():
     _activo = True
     _hilo = threading.Thread(target=_hilo_bucle, daemon=True, name="SchedulerTBDT")
     _hilo.start()
-    logger.info("Scheduler iniciado | Horario: 07:00h | 15:00h | 22:00h")
+    horas_str = " | ".join(f"{h:02d}:{m:02d}h" for h, m in _horas_configuradas)
+    logger.info("Iniciando | Horario: %s", horas_str)
 
 
 def detener():
@@ -216,7 +263,7 @@ def detener():
     global _activo, _hilo
     _activo = False
     _hilo = None
-    logger.info("Scheduler detenido.")
+    logger.info("Ingesta automática detenida.")
 
 
 def esta_activo() -> bool:
@@ -227,16 +274,28 @@ def obtener_proximo_disparo() -> datetime:
     if not _activo:
         return None
     ahora = datetime.now()
-    for hora in sorted([7, 15, 22]):
-        if ahora.hour < hora:
-            return ahora.replace(hour=hora, minute=0, second=0, microsecond=0)
+    for h, m in sorted(_horas_configuradas):
+        target = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
+        if target > ahora:
+            return target
     manana = ahora.date() + timedelta(days=1)
-    return datetime(manana.year, manana.month, manana.day, 7, 0, 0)
+    h, m = sorted(_horas_configuradas)[0]
+    return datetime(manana.year, manana.month, manana.day, h, m, 0)
+
+
+def configurar_horas(horas: list):
+    """Establece los horarios de disparo. horas: lista de tuplas (hora, minuto)."""
+    global _horas_configuradas
+    _horas_configuradas = sorted(horas)
+
+
+def obtener_horas_configuradas() -> list:
+    """Devuelve la lista de horarios configurados como tuplas (hora, minuto)."""
+    return list(_horas_configuradas)
 
 
 def obtener_resumen() -> dict:
     return _ultimo_resumen.copy()
-
 
 def obtener_errores_recientes() -> list:
     return list(_errores_recientes)

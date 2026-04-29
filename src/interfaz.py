@@ -38,12 +38,19 @@ class InterfazTBDT:
                 zonas.add(reg["distrito"])
         return sorted(list(zonas)) if zonas else []
 
-    def _validar_duplicado(self, fecha, distrito, fuente="manual"):
+    def _validar_duplicado(self, fecha, distrito, fuente="manual", hora=None):
         registros = [
             r for r in self.datos
             if r.get("fecha") == str(fecha)
             and r.get("distrito", "").lower() == distrito.lower()
         ]
+        if fuente == "api":
+            if hora is not None:
+                return any(
+                    r.get("fuente") == "api" and r.get("hora") == hora
+                    for r in registros
+                )
+            return any(r.get("fuente") == "api" for r in registros)
         if len(registros) >= 2:
             return True
         return any(r.get("fuente", "manual") == fuente for r in registros)
@@ -124,7 +131,7 @@ class InterfazTBDT:
             elif opcion == "5":
                 self.salir()
                 break
-            else:
+            elif opcion:
                 print("❌ Opción no válida.")
                 input("Presione Enter para continuar...")
 
@@ -154,7 +161,7 @@ class InterfazTBDT:
                 self._solicitar_datos_fecha_todos_distritos()
             elif opcion == "4":
                 break
-            else:
+            elif opcion:
                 print("❌ Opción no válida.")
                 input("Presione Enter para continuar...")
 
@@ -303,15 +310,19 @@ class InterfazTBDT:
 
     def _menu_encender_detener_ingesta(self):
         while True:
+            self._verificar_notificacion_scheduler()
             activo = sched_module.esta_activo()
             resumen = sched_module.obtener_resumen()
             proximo = sched_module.obtener_proximo_disparo()
+            horas = sched_module.obtener_horas_configuradas()
 
             self._mostrar_encabezado("⏱️ ENCENDER / DETENER ⏱️")
             estado_txt = "🟢 ACTIVO" if activo else "🔴 DETENIDO"
+            horas_str = " | ".join(f"{h:02d}:{m:02d}h" for h, m in horas)
             print(f"\n  Estado actual: {estado_txt}")
+            print(f"  Horario configurado: {horas_str}")
             if proximo:
-                print(f"  Próxima ejecución: {proximo.strftime('%H:%M:%S')}")
+                print(f"  Próxima ejecución: {proximo.strftime('%H:%M')}")
             if resumen["ultima_ejecucion"]:
                 ue = resumen["ultima_ejecucion"].strftime("%Y-%m-%d %H:%M:%S")
                 print(f"  Último ciclo: {ue}  |  ✅ {resumen['guardados']}  ⏭️ {resumen['omitidos']}  ❌ {resumen['errores']}")
@@ -324,11 +335,11 @@ class InterfazTBDT:
 
             print()
             print("1. ▶️/⏹️  Encender / Detener")
-            print("NOTA: 🕐 Tiempo (Horario fijo 07:00h | 15:00h | 22:00h) 🕐")
-            print("2. ⬅️  Volver")
+            print("2. ⏰  Configurar horarios")
+            print("3. ⬅️  Volver")
             self._mostrar_separador()
 
-            opcion = input("Seleccione una opción (1-2): ").strip()
+            opcion = input("Seleccione una opción (1-4): ").strip()
 
             if opcion == "1":
                 if activo:
@@ -336,13 +347,63 @@ class InterfazTBDT:
                     print("✅ Ingesta automática detenida.")
                 else:
                     sched_module.iniciar()
+                    horas_str = " | ".join(f"{h:02d}:{m:02d}h" for h, m in horas)
                     print("✅ Ingesta automática iniciada.")
-                    print("   Horario: 07:00h | 15:00h | 22:00h")
+                    print(f"   Horario: {horas_str}")
                 input("\nPresione Enter para continuar...")
             elif opcion == "2":
+                self._configurar_horas_ingesta()
+            elif opcion == "3":
                 break
-            else:
+            elif opcion:
                 print("❌ Opción no válida.")
+
+    def _configurar_horas_ingesta(self):
+        """Permite al usuario definir 3 horarios de autoingesta en formato HH:MM."""
+        self._mostrar_encabezado("⏰ CONFIGURAR HORARIOS DE INGESTA")
+        horas_actuales = sched_module.obtener_horas_configuradas()
+        horas_str = " | ".join(f"{h:02d}:{m:02d}h" for h, m in horas_actuales)
+        print(f"\n  Horario actual: {horas_str}")
+        print("  Introduce 3 horarios en formato HH:MM (ej. 07:00, 15:30, 22:45).")
+        print("  Escribe 'c' para cancelar.\n")
+
+        nuevas_horas = []
+        for i in range(1, 4):
+            while True:
+                entrada = input(f"  Horario {i}/3: ").strip()
+                if entrada.lower() == "c":
+                    print("❌ Configuración cancelada.")
+                    return
+                try:
+                    partes = entrada.split(":")
+                    if len(partes) != 2:
+                        raise ValueError
+                    h = int(partes[0])
+                    m = int(partes[1])
+                    if not (0 <= h <= 23 and 0 <= m <= 59):
+                        raise ValueError
+                    if (h, m) in nuevas_horas:
+                        print("❌ Ese horario ya fue introducido. Usa uno diferente.")
+                        continue
+                    nuevas_horas.append((h, m))
+                    break
+                except ValueError:
+                    print("❌ Formato incorrecto. Usa HH:MM (ej. 15:30).")
+
+        nuevas_horas.sort()
+        horas_str = " | ".join(f"{h:02d}:{m:02d}h" for h, m in nuevas_horas)
+        print(f"\n  Nuevo horario: {horas_str}")
+        confirmar = input("  ¿Confirmar? (s/n): ").strip().lower()
+        if confirmar != "s":
+            print("❌ Cambio cancelado.")
+            input("\nPresione Enter para continuar...")
+            return
+
+        sched_module.configurar_horas(nuevas_horas)
+        print(f"✅ Horario actualizado: {horas_str}")
+        if sched_module.esta_activo():
+            print("   ℹ️  Se aplicará el nuevo horario en el próximo ciclo.")
+        input("\nPresione Enter para continuar...")
 
     # ─── Registro manual (fallback por error de API) ──────────────────────────
 
@@ -425,10 +486,29 @@ class InterfazTBDT:
     # ─── Notificaciones de ingesta automática ────────────────────────────────
 
     def _verificar_notificacion_scheduler(self):
-        """Comprueba y muestra notificaciones pendientes del scheduler."""
         notif = sched_module.obtener_notificacion_pendiente()
         if notif:
-            self._mostrar_notificacion_ingesta(notif)
+            ts = notif["timestamp"].strftime("%H:%M")
+            g, o, e = notif["guardados"], notif["omitidos"], notif["errores"]
+            icono = "✅" if e == 0 else "⚠️ "
+            print(f"\n{icono} Autoingesta {ts} — {g} guardados | {o} omitidos | {e} errores")
+
+            guardados = [d for d in notif.get("detalles", []) if d["estado"] == "guardado"]
+            if guardados:
+                print(f"  {'Distrito':<22} {'Temp':>6} {'Hum':>5} {'Viento':>7} {'Lluvia':>7}")
+                print(f"  {'-'*22} {'-'*6} {'-'*5} {'-'*7} {'-'*7}")
+                for d in guardados:
+                    alerta = " 🚨" if d.get("alertas") else ""
+                    print(
+                        f"  {d['distrito']:<22} {d['temp']:>5.1f}°C "
+                        f"{d['humedad']:>4.0f}% {d['viento']:>6.0f}km/h "
+                        f"{d['lluvia']:>6.1f}mm{alerta}"
+                    )
+
+            if notif["errores_lista"]:
+                for err in notif["errores_lista"][:3]:
+                    print(f"   ⚠️  {err['distrito']}: {err['mensaje'][:60]}")
+
             self.datos = self._cargar_datos()
 
     def _mostrar_notificacion_ingesta(self, notif):
