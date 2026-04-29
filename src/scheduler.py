@@ -184,33 +184,10 @@ def _tarea_ingesta(h_slot=None, m_slot=None):
     })
 
 
-def _imprimir_resumen_ingesta(notif):
-    """Imprime el resumen de la autoingesta directamente en el terminal."""
-    ts = notif["timestamp"].strftime("%H:%M")
-    g, o, e = notif["guardados"], notif["omitidos"], notif["errores"]
-    icono = "✅" if e == 0 else "⚠️ "
-    print(f"\n{icono} Autoingesta {ts} — {g} guardados | {o} omitidos | {e} errores", flush=True)
-
-    guardados_det = [d for d in notif.get("detalles", []) if d["estado"] == "guardado"]
-    if guardados_det:
-        print(f"  {'Distrito':<22} {'Temp':>6} {'Hum':>5} {'Viento':>7} {'Lluvia':>7}", flush=True)
-        print(f"  {'-'*22} {'-'*6} {'-'*5} {'-'*7} {'-'*7}", flush=True)
-        for d in guardados_det:
-            alerta = " 🚨" if d.get("alertas") else ""
-            print(
-                f"  {d['distrito']:<22} {d['temp']:>5.1f}°C "
-                f"{d['humedad']:>4.0f}% {d['viento']:>6.0f}km/h "
-                f"{d['lluvia']:>6.1f}mm{alerta}",
-                flush=True,
-            )
-
-    for err in notif.get("errores_lista", [])[:3]:
-        print(f"   ⚠️  {err['distrito']}: {err['mensaje'][:60]}", flush=True)
-
-
 def _hilo_bucle():
     """Bucle del hilo de fondo: dispara ingesta en los horarios configurados."""
     ultimos_disparos: dict = {}  # (h, m) → fecha en que disparó por última vez
+    print("\nHilo iniciado.", flush=True)
 
     while _activo:
         try:
@@ -227,11 +204,6 @@ def _hilo_bucle():
                     ultimos_disparos[(h, m)] = hoy
                     _tarea_ingesta(h, m)
                     print(f"✅ Ingesta {h:02d}:{m:02d} completada.", flush=True)
-                    try:
-                        notif = _notification_queue.get_nowait()
-                        _imprimir_resumen_ingesta(notif)
-                    except queue.Empty:
-                        pass
 
         except Exception as exc:
             logger.error("❌ Error en bucle — %s", exc)
