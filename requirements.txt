@@ -9,6 +9,7 @@ cycler==0.12.1
 dotenv==0.9.9
 Flask==3.0.0
 Flask-Cors==4.0.0
+flask-socketio==5.3.6
 fonttools==4.62.1
 idna==3.13
 iniconfig==2.3.0
@@ -16,7 +17,7 @@ itsdangerous==2.2.0
 Jinja2==3.1.6
 kiwisolver==1.5.0
 MarkupSafe==3.0.3
-matplotlib==3.10.8
+matplotlib==3.10.8 
 mplcyberpunk==0.7.6
 numpy==2.4.4
 packaging==26.0
@@ -25,6 +26,7 @@ pillow==12.2.0
 pluggy==1.6.0
 pwinput==1.0.3
 Pygments==2.20.0
+pywinpty; platform_system == "Windows" and python_version < "3.14"
 pyparsing==3.3.2
 pytest==9.0.3
 python-dateutil==2.9.0.post0

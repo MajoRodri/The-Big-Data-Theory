@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Big Data Theory | Terminal Climática</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdn.socket.io">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">T</div>
+        <div>
+          <h1>The Big Data Theory</h1>
+          <div class="subtitle">Sistema de Monitoreo Climático - Madrid</div>
+        </div>
+      </div>
+      <div class="status">
+        <span class="pulse"></span>
+        <span>Terminal web activa</span>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="rail" aria-label="Resumen del sistema">
+        <div class="metric">
+          <div class="label">Cobertura</div>
+          <div class="value"><span>21</span> distritos</div>
+        </div>
+        <div class="metric">
+          <div class="label">Fuente</div>
+          <div class="value">WeatherAPI</div>
+        </div>
+        <div class="metric">
+          <div class="label">Modo</div>
+          <div class="value">CLI web</div>
+        </div>
+      </aside>
+
+      <section class="terminal-shell" aria-label="Terminal interactiva">
+        <div class="terminal-header">
+          <div class="window-controls" aria-hidden="true">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+          </div>
+          <div class="terminal-title">python src/main.py</div>
+        </div>
+        <div id="terminal"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
