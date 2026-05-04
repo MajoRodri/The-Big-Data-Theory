@@ -1,3 +1,3 @@
 """
-Package de tests para PyClima Resiliente - Proyecto II
+Package de tests para The Big Data Theory.
 """

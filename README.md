@@ -270,9 +270,8 @@ Gestión de datos en `datos_clima.json` con capacidades de exportación a CSV y 
 | # | 📏 Regla | 📝 Descripción |
 |:---:|:---|:---|
 | 1️⃣ | **Control de Duplicados** | Se admite un único registro de fuente API por combinación de fecha y distrito. |
-| 2️⃣ | **Política de Edición** | Los registros solo pueden ser editados una vez, únicamente si son de origen manual y por el usuario que los creó. |
-| 3️⃣ | **Smart Cache** | El sistema detecta fuentes de tipo "historico" para optimizar las llamadas a la API y evitar redundancias. |
-| 4️⃣ | **Escritura Eficiente** | El guardado en lote (`batch`) asegura que se realice una sola operación de escritura por cada ciclo del sistema. |
+| 2️⃣ | **Smart Cache** | El sistema detecta fuentes de tipo "historico" para optimizar las llamadas a la API y evitar redundancias. |
+| 3️⃣ | **Escritura Eficiente** | El guardado en lote (`batch`) asegura que se realice una sola operación de escritura por cada ciclo del sistema. |
 
 </details>
 
