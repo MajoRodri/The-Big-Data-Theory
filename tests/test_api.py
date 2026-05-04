@@ -6,11 +6,6 @@ Estos tests verifican:
 2. Que los datos se normalizan correctamente
 3. Que los errores HTTP se manejan adecuadamente
 
-Ejecutar con:
-    pytest tests/test_api_hito1.py -v
-    
-O desde la raíz del proyecto:
-    python -m pytest tests/test_api_hito1.py -v
 """
 
 import pytest
