@@ -3,7 +3,7 @@ Módulo de normalización de respuestas de WeatherAPI para The Big Data Theory.
 Convierte la respuesta cruda de la API al modelo interno del sistema.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 import alertas
 import persistencia
@@ -32,7 +32,12 @@ def normalizar_respuesta_weatherapi(datos_api: dict, latencia_ms: int) -> dict:
             "presion": float(current.get("pressure_mb", 0.0)),
             "descripcion": condicion,
             "latencia_ms": int(latencia_ms),
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "ubicacion": {
+                "nombre": location.get("name", ""),
+                "region": location.get("region", ""),
+                "pais": location.get("country", ""),
+            },
         }
     except (TypeError, ValueError, KeyError) as error:
         logger.error(
@@ -68,7 +73,7 @@ def normalizar_respuesta_weatherapi_historico(datos_api: dict, latencia_ms: int)
             "presion": 0.0,
             "descripcion": condicion,
             "latencia_ms": int(latencia_ms),
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat(),
         }
     except (TypeError, ValueError, KeyError, IndexError) as error:
         logger.error(

@@ -26,11 +26,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 class TestWeatherAPIConexion:
     """Tests para verificar la conexión a WeatherAPI"""
     
-    @patch('requests.get')
-    @patch('Api.WEATHERAPI_API_KEY', "test_key")
-    @patch('Api.WEATHERAPI_BASE_URL', "http://api.weatherapi.com/v1/current.json")
-    @patch('Api.WEATHERAPI_TIMEOUT', 5)
-    @patch('Api.WEATHERAPI_REINTENTOS', 3)
+    @patch('requests.Session.get')
+    @patch('api.WEATHERAPI_API_KEY', "test_key")
+    @patch('api.WEATHERAPI_BASE_URL', "http://api.weatherapi.com/v1/current.json")
+    @patch('api.WEATHERAPI_TIMEOUT', 5)
+    @patch('api.WEATHERAPI_REINTENTOS', 3)
     def test_obtener_respuesta_weatherapi_success(self, mock_get):
         """
         Test: Conexión exitosa a WeatherAPI (200 OK)
@@ -111,35 +111,27 @@ class TestWeatherAPIConexion:
         assert resultado is None
         assert latencia is None
     
-    @patch('requests.get')
-    @patch('os.getenv')
-    def test_error_401_api_key_invalida(self, mock_getenv, mock_get):
+    @patch('requests.Session.get')
+    @patch('api.WEATHERAPI_API_KEY', "invalid_key")
+    def test_error_401_api_key_invalida(self, mock_get):
         """
         Test: Error 401 - API key inválida
-        
+
         Verifica que:
         - Se maneja correctamente el error 401
         - Se devuelve None
         """
         from api import obtener_respuesta_weatherapi
-        
-        # Mock de variables de entorno
-        mock_getenv.side_effect = lambda key, default=None: {
-            "WEATHERAPI_API_KEY": "invalid_key",
-            "WEATHERAPI_BASE_URL": "http://api.weatherapi.com/v1/current.json",
-            "WEATHERAPI_TIMEOUT_SEGUNDOS": "5",
-            "WEATHERAPI_REINTENTOS": "3"
-        }.get(key, default)
-        
+
         # Mock de respuesta 401
         mock_response = Mock()
         mock_response.status_code = 401
         mock_response.text = "Invalid API key"
         mock_get.return_value = mock_response
-        
+
         # Ejecutar función
         resultado, latencia = obtener_respuesta_weatherapi("Madrid")
-        
+
         # Verificaciones
         assert resultado is None
         assert latencia is None
@@ -162,56 +154,49 @@ class TestWeatherAPIConexion:
         mock_response_200.status_code = 200
         mock_response_200.json.return_value = {"test": "data"}
         
-        with patch('Api.WEATHERAPI_API_KEY', "test_key"), \
-             patch('Api.WEATHERAPI_BASE_URL', "http://api.weatherapi.com/v1/current.json"), \
-             patch('Api.WEATHERAPI_TIMEOUT', 5), \
-             patch('Api.WEATHERAPI_REINTENTOS', 3), \
+        with patch('api.WEATHERAPI_API_KEY', "test_key"), \
+             patch('api.WEATHERAPI_BASE_URL', "http://api.weatherapi.com/v1/current.json"), \
+             patch('api.WEATHERAPI_TIMEOUT', 5), \
+             patch('api.WEATHERAPI_REINTENTOS', 3), \
              patch('time.sleep') as mock_sleep, \
-             patch('requests.get') as mock_get:
-            
+             patch('requests.Session.get') as mock_get:
+
             mock_get.side_effect = [mock_response_429, mock_response_200]
-            
+
             # Ejecutar función
             resultado, latencia = obtener_respuesta_weatherapi("Madrid")
-            
+
             # Verificaciones
             assert resultado is not None
             assert isinstance(latencia, int)
             assert latencia >= 0
-            
+
             # Verificar que se llamó a sleep (reintento)
             mock_sleep.assert_called_once()
-            
+
             # Verificar que se hicieron 2 llamadas (reintento exitoso)
             assert mock_get.call_count == 2  # 2 sleeps para 3 reintentos
     
-    @patch('requests.get')
-    @patch('os.getenv')
-    def test_timeout(self, mock_getenv, mock_get):
+    @patch('requests.Session.get')
+    @patch('api.WEATHERAPI_API_KEY', "test_key")
+    @patch('api.WEATHERAPI_REINTENTOS', 1)
+    def test_timeout(self, mock_get):
         """
         Test: Timeout en la conexión
-        
+
         Verifica que:
         - Se maneja correctamente el timeout
         - Se devuelve None
         """
         from api import obtener_respuesta_weatherapi
         from requests import Timeout
-        
-        # Mock de variables de entorno
-        mock_getenv.side_effect = lambda key, default=None: {
-            "WEATHERAPI_API_KEY": "test_key",
-            "WEATHERAPI_BASE_URL": "http://api.weatherapi.com/v1/current.json",
-            "WEATHERAPI_TIMEOUT_SEGUNDOS": "5",
-            "WEATHERAPI_REINTENTOS": "3"
-        }.get(key, default)
-        
+
         # Mock que lanza Timeout
         mock_get.side_effect = Timeout("Connection timed out")
-        
+
         # Ejecutar función
         resultado, latencia = obtener_respuesta_weatherapi("Madrid")
-        
+
         # Verificaciones
         assert resultado is None
         assert latencia is None
@@ -234,26 +219,26 @@ class TestWeatherAPIConexion:
         mock_response_200.status_code = 200
         mock_response_200.json.return_value = {"test": "data"}
         
-        with patch('Api.WEATHERAPI_API_KEY', "test_key"), \
-             patch('Api.WEATHERAPI_BASE_URL', "http://api.weatherapi.com/v1/current.json"), \
-             patch('Api.WEATHERAPI_TIMEOUT', 5), \
-             patch('Api.WEATHERAPI_REINTENTOS', 3), \
+        with patch('api.WEATHERAPI_API_KEY', "test_key"), \
+             patch('api.WEATHERAPI_BASE_URL', "http://api.weatherapi.com/v1/current.json"), \
+             patch('api.WEATHERAPI_TIMEOUT', 5), \
+             patch('api.WEATHERAPI_REINTENTOS', 3), \
              patch('time.sleep') as mock_sleep, \
-             patch('requests.get') as mock_get:
-            
+             patch('requests.Session.get') as mock_get:
+
             mock_get.side_effect = [mock_response_500, mock_response_200]
-            
+
             # Ejecutar función
             resultado, latencia = obtener_respuesta_weatherapi("Madrid")
-            
+
             # Verificaciones
             assert resultado is not None
             assert isinstance(latencia, int)
             assert latencia >= 0
-            
+
             # Verificar que se llamó a sleep (reintento)
             mock_sleep.assert_called_once()
-            
+
             # Verificar que se hicieron 2 llamadas (reintento exitoso)
             assert mock_get.call_count == 2
 
@@ -370,8 +355,8 @@ class TestRegistroClimatico:
     
     @patch('alertas.evaluar_alertas')
     @patch('persistencia.obtener_umbrales_alerta')
-    @patch('Api.obtener_respuesta_weatherapi')
-    @patch('Api.normalizar_respuesta_weatherapi')
+    @patch('api.obtener_respuesta_weatherapi_historico')
+    @patch('api.normalizar_respuesta_weatherapi_historico')
     def test_obtener_registro_climatico_estructura(self, mock_normalizar, mock_obtener_respuesta, mock_umbrales, mock_evaluar_alertas):
         """
         Test: Estructura completa del registro climático
