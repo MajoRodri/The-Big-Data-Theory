@@ -15,16 +15,17 @@ from interfaz import InterfazTBDT
 import auth
 import persistencia
 from logger_config import setup_logging
+from welcome import make_banner, show_goodbye
+from rich.console import Console
+from rich.align import Align
 
 
 if __name__ == "__main__":
     try:
         setup_logging()
 
-        print("\n" + "=" * 50)
-        print("  THE BIG DATA THEORY")
-        print("  Sistema de Monitoreo Climático - Madrid")
-        print("=" * 50)
+        console = Console()
+        console.print(Align(make_banner(), align="center"))
 
         persistencia.inicializar_archivo_datos()
         auth.migrar_passwords_usuarios()
@@ -43,7 +44,7 @@ if __name__ == "__main__":
             elif opcion == "2":
                 auth.registrar_usuario()
             elif opcion == "3":
-                print("\nSaliendo del sistema...")
+                show_goodbye()
                 sys.exit(0)
             else:
                 print("❌ Opción no válida. Intente de nuevo.")
@@ -52,9 +53,11 @@ if __name__ == "__main__":
 
         app = InterfazTBDT(usuario_actual=usuario_autenticado)
         app.menu_principal()
+        show_goodbye()
 
     except KeyboardInterrupt:
-        print("\n\n❌ Aplicación interrumpida por el usuario")
+        show_goodbye()
+        print("\n❌ Aplicación interrumpida por el usuario")
 
     except Exception as e:
         print(f"\n❌ Error crítico de inicio: {e}")
