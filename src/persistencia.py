@@ -157,6 +157,43 @@ def actualizar_base_de_datos(historico_modificado):
         return False
 
 
+def actualizar_umbrales_alerta(nuevos_umbrales: dict) -> bool:
+    """
+    Actualiza los umbrales de alerta en el archivo de configuración.
+    Hace merge con los existentes y deriva claves del esquema antiguo.
+
+    Returns:
+        bool: True si la escritura fue exitosa.
+    """
+    try:
+        if os.path.exists(CONFIGURACION_DE_ARCHIVO):
+            with open(CONFIGURACION_DE_ARCHIVO, "r", encoding="utf-8") as archivo:
+                config = json.load(archivo)
+        else:
+            config = {}
+
+        umbrales = config.get("umbrales", {})
+        umbrales.update(nuevos_umbrales)
+
+        # Derivar claves del esquema antiguo desde claves nuevas
+        if "temperatura_max" in nuevos_umbrales:
+            umbrales["temp_max_roja"] = nuevos_umbrales["temperatura_max"]
+            umbrales["temp_max_naranja"] = round(nuevos_umbrales["temperatura_max"] - 5, 1)
+        if "temperatura_min" in nuevos_umbrales:
+            umbrales["temp_min_critica"] = nuevos_umbrales["temperatura_min"]
+        if "lluvia_max" in nuevos_umbrales:
+            umbrales["lluvia_roja"] = nuevos_umbrales["lluvia_max"]
+
+        config["umbrales"] = umbrales
+
+        with open(CONFIGURACION_DE_ARCHIVO, "w", encoding="utf-8") as archivo:
+            json.dump(config, archivo, indent=4, ensure_ascii=False)
+        return True
+    except Exception as error:
+        print(f"Error al actualizar umbrales: {error}")
+        return False
+
+
 def obtener_query_api(distrito):
     """Devuelve el alias de consulta para WeatherAPI si está configurado, o el nombre del distrito."""
     try:
